@@ -1,0 +1,158 @@
+# Firma Finder — Roadmap
+
+## Princip rada
+
+Razvoj ide postepeno:
+
+1. stabilan model podataka;
+2. ručni CRM tok;
+3. testovi i zaštite;
+4. objektivni tehnički audit;
+5. vizuelni audit;
+6. AI analiza zasnovana na dokazima;
+7. nacrt ponude uz ručno odobrenje;
+8. tek zatim automatizacija većeg obima.
+
+AI nije zamena za proveru. Služi za ubrzanje procene, prioritizaciju i
+pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
+
+---
+
+## Završeno
+
+### APR katalog
+
+- [x] Lokalni APR katalog firmi
+- [x] Uvoz 125.054 firmi
+- [x] Pretraga po nazivu firme i matičnom broju
+- [x] Filter po opštini
+- [x] Filter po šifri delatnosti
+- [x] Filter po APR statusu
+- [x] Paginacija
+- [x] Detalj firme
+
+### CRM osnova
+
+- [x] Tabela `company_leads`
+- [x] 1:1 veza `Company → CompanyLead`
+- [x] Ručno kreiranje CRM leada
+- [x] Ručna izmena CRM leada
+- [x] URL sajta, telefon, e-mail i napomene
+- [x] Status sajta
+- [x] Status leada
+- [x] Lead score
+- [x] Automatski datum prvog kontakta
+- [x] CRM lista na `/leads`
+- [x] Filteri CRM liste
+- [x] Sortiranje CRM liste
+- [x] CRM status u katalogu firmi
+- [x] Dokumentacija početnog stanja
+
+---
+
+## Sledeće: CRM završetak
+
+### CRM katalog
+
+- [ ] Filter: sve firme / samo firme sa leadom / samo firme bez leada
+- [ ] Opcioni filter prema konkretnom CRM statusu direktno na katalogu
+- [ ] Jasniji vizuelni statusi za različite faze leada
+- [ ] Prikaz ili filter po lead score-u
+
+### Validacija i UX
+
+- [ ] Validirati URL sajta kao stvarni URL, uz normalizaciju protokola
+- [ ] Automatski postaviti `website_checked_at` pri ručnoj promeni statusa sajta
+- [ ] Uvesti jasniju oznaku da li je URL proveravan i kada
+- [ ] Omogućiti bezbedno brisanje CRM leada uz potvrdu, ako se pokaže potrebno
+
+### Testovi
+
+- [ ] Feature test za kreiranje leada
+- [ ] Feature test za ažuriranje leada
+- [ ] Test validacije statusa i lead score-a
+- [ ] Test 1:1 ograničenja nad `company_id`
+- [ ] Test `CompanyLeadObserver` ponašanja za `contacted_at`
+- [ ] Test filtera CRM liste
+- [ ] Test filtera CRM stanja na katalogu
+
+---
+
+## Website audit bez AI-ja
+
+### Model i istorija
+
+- [ ] Kreirati tabelu `company_website_audits`
+- [ ] Dodati relacije između leada i više audita
+- [ ] Prikaz liste prethodnih audita na detalju firme
+- [ ] Ručni unos audita i nalaza
+- [ ] Čuvanje datuma provere, URL-a i konačnog URL-a
+- [ ] Čuvanje statusa uspeha/neuspeha audita
+- [ ] Ručna potvrda nalaza
+
+### Tehnička provera
+
+- [ ] Provera dostupnosti URL-a
+- [ ] HTTP status kod
+- [ ] Krajnji URL posle redirekcija
+- [ ] Provera HTTPS-a
+- [ ] Vreme odgovora
+- [ ] Razlog greške, kada provera ne uspe
+- [ ] Rate limiting i ograničenje paralelnih provera
+- [ ] Audit queue/job infrastruktura
+
+### Lighthouse i screenshotovi
+
+- [ ] Lighthouse rezultat za performance
+- [ ] Lighthouse rezultat za accessibility
+- [ ] Lighthouse rezultat za best practices
+- [ ] Lighthouse rezultat za SEO
+- [ ] Desktop screenshot
+- [ ] Mobile screenshot
+- [ ] Lokalno skladištenje audit artefakata
+- [ ] Pregled artefakata na stranici firme
+
+---
+
+## AI audit
+
+- [ ] Izabrati AI provajdera i model
+- [ ] Definisati format strukturisanog AI odgovora
+- [ ] AI analiza tehničkih rezultata i screenshotova
+- [ ] Ocena desktop prikaza
+- [ ] Ocena mobilnog prikaza
+- [ ] Ocena dizajna i jasnoće poruke
+- [ ] Ocena CTA elemenata i konverzionih prilika
+- [ ] Preporučeni tip rada:
+  - manje izmene;
+  - unapređenje postojećeg sajta;
+  - redizajn;
+  - novi sajt.
+- [ ] AI confidence oznaka
+- [ ] Ručna potvrda ili odbacivanje AI nalaza
+- [ ] Čuvanje verzije prompta i modela korišćenog za audit
+
+---
+
+## Ponude i kontakt
+
+- [ ] Nacrt personalizovane ponude zasnovan na odobrenim nalazima
+- [ ] Izbor tona poruke
+- [ ] Ručna izmena nacrta
+- [ ] Ručno odobrenje pre bilo kakvog slanja
+- [ ] Istorija nacrta i odobrenja
+- [ ] Evidencija poslatog kontakta
+- [ ] Naknadna faza i integracija e-mail slanja, samo uz eksplicitnu potvrdu
+
+---
+
+## Kasnije
+
+- [ ] Autentikacija i više korisnika
+- [ ] Uloge i dozvole
+- [ ] Izvoz leadova i audita
+- [ ] Dashboard sa CRM metrikama
+- [ ] Dnevni/periodični ponovni audit
+- [ ] Batch obrada odabranih firmi
+- [ ] Konfigurabilni scoring model
+- [ ] Deployment iz lokalnog okruženja
