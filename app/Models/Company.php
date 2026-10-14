@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+
 class Company extends Model
 {
     protected $fillable = [
@@ -31,5 +33,10 @@ class Company extends Model
     public function lead(): HasOne
     {
         return $this->hasOne(CompanyLead::class);
+    }
+
+    public function companyDataPoints(): HasMany
+    {
+        return $this->hasMany(CompanyDataPoint::class);
     }
 }
