@@ -51,6 +51,23 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 - [x] Validacija i normalizacija website URL-a
 - [x] Automatski datum poslednje provere sajta
 
+### Website audit osnova
+
+- [x] Tabela `company_website_audits`
+- [x] `CompanyWebsiteAudit` model
+- [x] Relacija `CompanyLead hasMany CompanyWebsiteAudit`
+- [x] Relacija `CompanyWebsiteAudit belongsTo CompanyLead`
+- [x] Mogućnost više audita za isti lead
+- [x] Cascade brisanje audita pri brisanju leada
+- [x] Statusi audita: `pending`, `completed`, `failed`
+- [x] Prikaz istorije audita na detalju firme
+- [x] Ručna forma za kreiranje website audita
+- [x] Čuvanje URL provere, krajnjeg URL-a, HTTP statusa, dostupnosti,
+  HTTPS statusa, broja redirekcija, vremena odgovora, naslova stranice,
+  meta description-a, napomena i greške
+- [x] Feature testovi za model, relacije, cascade brisanje, validaciju
+  i UI tok
+
 ---
 
 ## Sledeće: CRM završetak
@@ -76,10 +93,12 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 - [x] Test validacije statusa i lead score-a
 - [x] Test 1:1 ograničenja nad `company_id`
 - [x] Test `CompanyLeadObserver` ponašanja za `contacted_at`
-- [ ] Test filtera CRM liste
+- [x] Test filtera CRM liste
 - [x] Test filtera CRM stanja na katalogu
 - [x] Testovi za URL validaciju i normalizaciju
 - [x] Testovi za automatsko `website_checked_at`
+- [x] Testovi za `CompanyWebsiteAudit` model, relacije i cascade brisanje
+- [x] Testovi za ručno kreiranje website audita kroz UI
 
 ---
 
@@ -87,12 +106,12 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 
 ### Model i istorija
 
-- [ ] Kreirati tabelu `company_website_audits`
-- [ ] Dodati relacije između leada i više audita
-- [ ] Prikaz liste prethodnih audita na detalju firme
-- [ ] Ručni unos audita i nalaza
-- [ ] Čuvanje datuma provere, URL-a i konačnog URL-a
-- [ ] Čuvanje statusa uspeha/neuspeha audita
+- [x] Kreirati tabelu `company_website_audits`
+- [x] Dodati relacije između leada i više audita
+- [x] Prikaz liste prethodnih audita na detalju firme
+- [x] Ručni unos audita i nalaza
+- [x] Čuvanje datuma provere, URL-a i konačnog URL-a
+- [x] Čuvanje statusa uspeha/neuspeha audita
 - [ ] Ručna potvrda nalaza
 
 ### Tehnička provera
@@ -129,10 +148,10 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 - [ ] Ocena dizajna i jasnoće poruke
 - [ ] Ocena CTA elemenata i konverzionih prilika
 - [ ] Preporučeni tip rada:
-  - manje izmene;
-  - unapređenje postojećeg sajta;
-  - redizajn;
-  - novi sajt.
+    - manje izmene;
+    - unapređenje postojećeg sajta;
+    - redizajn;
+    - novi sajt.
 - [ ] AI confidence oznaka
 - [ ] Ručna potvrda ili odbacivanje AI nalaza
 - [ ] Čuvanje verzije prompta i modela korišćenog za audit

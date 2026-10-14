@@ -55,6 +55,23 @@ Tabela `company_leads` čuva ručne CRM podatke:
 Veza `Company → CompanyLead` je striktno 1:1 i zaštićena je
 jedinstvenim indeksom nad `company_leads.company_id`.
 
+### Website audit podaci
+
+Tabela `company_website_audits` čuva istoriju ručnih tehničkih provera
+sajta za CRM leadove.
+
+Veza je:
+
+```text
+CompanyLead hasMany CompanyWebsiteAudit
+CompanyWebsiteAudit belongsTo CompanyLead
+```
+
+Jedan CRM lead može imati više website audita. Brisanje leada briše i
+sve povezane audite kroz `cascadeOnDelete`.
+
+APR podaci u `companies` se nikada ne menjaju audit podacima.
+
 ## Trenutno završeno
 
 ### APR katalog
@@ -62,11 +79,11 @@ jedinstvenim indeksom nad `company_leads.company_id`.
 - Lokalno je uvezen APR katalog sa 125.054 firmi.
 - Lista firmi je dostupna na `/companies`.
 - Postoje pretraga i filteri po:
-  - nazivu firme;
-  - matičnom broju;
-  - opštini;
-  - šifri delatnosti;
-  - APR statusu.
+    - nazivu firme;
+    - matičnom broju;
+    - opštini;
+    - šifri delatnosti;
+    - APR statusu.
 - Lista koristi paginaciju od 50 firmi po stranici.
 - Detalj firme je dostupan na:
   `/companies/{registration_number}`.
@@ -76,28 +93,28 @@ jedinstvenim indeksom nad `company_leads.company_id`.
 - Kreirana je tabela `company_leads`.
 - Kreiran je `CompanyLead` model.
 - Dodate su Eloquent relacije:
-  - `Company::lead()` (`hasOne`);
-  - `CompanyLead::company()` (`belongsTo`).
+    - `Company::lead()` (`hasOne`);
+    - `CompanyLead::company()` (`belongsTo`).
 - Dodate su konstante za:
-  - status sajta;
-  - status leada.
+    - status sajta;
+    - status leada.
 - Na detalju firme postoji CRM forma za:
-  - URL sajta;
-  - status sajta;
-  - telefon;
-  - e-mail;
-  - status leada;
-  - lead score od 0 do 100;
-  - napomene.
+    - URL sajta;
+    - status sajta;
+    - telefon;
+    - e-mail;
+    - status leada;
+    - lead score od 0 do 100;
+    - napomene.
 - Postoje rute za kreiranje i izmenu CRM zapisa:
-  - `POST /companies/{registration_number}/lead`;
-  - `PUT /companies/{registration_number}/lead`.
+    - `POST /companies/{registration_number}/lead`;
+    - `PUT /companies/{registration_number}/lead`.
 - CRM lista je dostupna na `/leads`.
 - CRM lista podržava:
-  - pretragu po nazivu i matičnom broju;
-  - filtriranje po statusu leada;
-  - filtriranje po statusu sajta;
-  - sortiranje po score-u ili poslednjoj izmeni.
+    - pretragu po nazivu i matičnom broju;
+    - filtriranje po statusu leada;
+    - filtriranje po statusu sajta;
+    - sortiranje po score-u ili poslednjoj izmeni.
 - Glavni katalog na `/companies` prikazuje CRM kolonu.
 - CRM status vodi na detalj firme radi izmene.
 - CRM filter na katalogu firmi podržava:
@@ -123,7 +140,46 @@ prvi put dobije status `contacted`.
 Datum prvog kontakta ostaje sačuvan kada se status kasnije promeni,
 na primer iz `contacted` u `qualified`.
 
-## Trenutni testni zapis
+### Website audit osnova
+
+- Kreirana je tabela `company_website_audits`.
+- Kreiran je `CompanyWebsiteAudit` model.
+- Dodate su Eloquent relacije:
+    - `CompanyLead::websiteAudits()` (`hasMany`);
+    - `CompanyWebsiteAudit::companyLead()` (`belongsTo`).
+- Jedan CRM lead može imati više website audita.
+- Audit zapisi se brišu zajedno sa leadom kroz `cascadeOnDelete`.
+- Podržani statusi audita su:
+    - `pending`;
+    - `completed`;
+    - `failed`.
+- Na detalju firme postoji sekcija **Website audit istorija**.
+- Korisnik može ručno da doda website audit kroz formu na detalju firme.
+- Audit čuva:
+    - URL provere;
+    - krajnji URL;
+    - HTTP status;
+    - dostupnost sajta;
+    - HTTPS status;
+    - broj redirekcija;
+    - vreme odgovora;
+    - naslov stranice;
+    - meta description;
+    - napomene;
+    - grešku, ako je bilo;
+    - datum početka i završetka provere.
+- Website audit se trenutno unosi ručno.
+- Postoje feature testovi za:
+    - kreiranje audita za lead;
+    - relaciju lead → audits;
+    - više audita za isti lead;
+    - cascade brisanje audita;
+    - validaciju statusa audita;
+    - ručno kreiranje audita kroz UI;
+    - odbijanje nevalidnog URL-a i statusa;
+    - sprečavanje kreiranja audita bez CRM leada.
+
+## Trenutni testni zapisi
 
 Postoji jedan ručni testni lead:
 
@@ -135,34 +191,48 @@ Postoji jedan ručni testni lead:
 - Lead score: `10`
 - Datum prvog kontakta: `2026-10-11 08:18:28 UTC`
 
-Ovaj zapis služi za razvoj i proveru CRM ekrana.
+Za ovaj lead postoje ručni testni website audit zapisi koji služe za
+proveru prikaza istorije audita i UI forme.
 
 ## Aktivni fokus
 
-Završavanje CRM dokumentacije i prelazak na razvoj website-audit modula.
+Website audit osnova je završena. Sledeći korak je proširenje audit
+modula tehničkom proverom URL-a, HTTP statusa, redirekcija i HTTPS-a.
 
 ## Sledeći zadatak
 
-Dizajnirati i implementirati zasebnu tabelu `company_website_audits`
-za istoriju website provera.
+Dodati tehničku proveru URL-a u website audit modulu, uz čuvanje:
 
-## Plan nakon CRM osnove
+- HTTP statusa;
+- krajnjeg URL-a posle redirekcija;
+- HTTPS statusa;
+- broja redirekcija;
+- vremena odgovora;
+- razloga greške, kada provera ne uspe.
 
-1. Dizajnirati zasebnu tabelu `company_website_audits`.
-2. Dodati ručni pregled i istoriju website audita po firmi.
-3. Dodati tehničku proveru URL-a, HTTP statusa, redirekcija i HTTPS-a.
-4. Dodati Lighthouse rezultat i desktop/mobile screenshotove.
-5. Dodati AI analizu zasnovanu na tehničkim dokazima i snimcima.
-6. Dodati nacrt ponude uz obaveznu ručnu proveru i odobrenje.
-7. Tek nakon potvrđenog kvaliteta dodati queue, rate limiting i batch obradu.
+Tehnička provera ostaje ručno pokrenuta u prvoj verziji.
+
+## Plan nakon website audit osnove
+
+1. Dodati tehničku proveru URL-a, HTTP statusa, redirekcija i HTTPS-a.
+2. Dodati Lighthouse rezultate za performance, accessibility,
+   best practices i SEO.
+3. Dodati desktop i mobilne screenshotove.
+4. Dodati AI analizu zasnovanu na tehničkim dokazima i snimcima.
+5. Dodati nacrt ponude uz obaveznu ručnu proveru i odobrenje.
+6. Tek nakon potvrđenog kvaliteta dodati queue, rate limiting i batch
+   obradu.
 
 ## Trenutna ograničenja
 
 - URL, telefon i e-mail unose se ručno.
+- Website audit se unosi ručno kroz formu na detalju firme.
 - Tehnička provera da li sajt radi još uvek se vrši ručno.
-- `website_checked_at` se automatski postavlja pri kreiranju leada i promeni statusa sajta.
-- Nema automatske tehničke provere HTTP statusa, redirekcija, HTTPS-a, Lighthouse rezultata ili vizuelnog audita.
-- Nema istorije website audita; planirana je zasebna tabela `company_website_audits`.
+- `website_checked_at` se automatski postavlja pri kreiranju leada i
+  promeni statusa sajta.
+- Nema automatske tehničke provere HTTP statusa, redirekcija, HTTPS-a,
+  Lighthouse rezultata ili vizuelnog audita.
+- AI analiza, Lighthouse rezultati i screenshotovi nisu implementirani.
 - Nema AI API integracije.
 - Nema automatskog slanja poruka, e-mailova ili ponuda.
 - Nema autentikacije i više korisnika.

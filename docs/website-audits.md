@@ -35,15 +35,15 @@ automatsku konačnu stručnu ili poslovnu ocenu.
 
 ---
 
-## Planirani model podataka
+## Implementirani model podataka
 
-Planirana tabela:
+Tabela:
 
 ```text
 company_website_audits
 ```
 
-Planirana relacija:
+Relacija:
 
 ```text
 CompanyLead hasMany CompanyWebsiteAudit
@@ -53,146 +53,101 @@ CompanyWebsiteAudit belongsTo CompanyLead
 Povezivanje preko `company_lead_id` je namerno: audit postoji samo za
 firmu koja je postala CRM lead i ima poznat ili predložen URL.
 
-Tačan naziv kolona i relacija potvrđuju se pre izrade migracije.
+Brisanje CRM leada briše i sve njegove website audite kroz
+`cascadeOnDelete`.
+
+Prva implementirana verzija koristi užu osnovnu šemu. Sadrži tehničke i
+ručne podatke o proveri sajta, bez AI, Lighthouse i screenshot polja.
+
+### Implementirana polja
+
+| Polje | Tip | Svrha |
+|---|---|---|
+| `id` | primarni ključ | Identifikator audita |
+| `company_lead_id` | foreign key | CRM lead kojem audit pripada |
+| `requested_url` | string, nullable | URL predat na proveru |
+| `final_url` | string, nullable | Krajnji URL nakon redirekcija |
+| `status` | string | Stanje audita |
+| `audit_version` | string | Verzija audit logike |
+| `http_status` | integer, nullable | HTTP status krajnjeg odgovora |
+| `is_reachable` | boolean, nullable | Da li je sajt dostupan |
+| `has_https` | boolean, nullable | Da li krajnji URL koristi HTTPS |
+| `redirect_count` | integer, nullable | Broj redirekcija |
+| `response_time_ms` | integer, nullable | Vreme odgovora |
+| `page_title` | string, nullable | Naslov stranice |
+| `meta_description` | text, nullable | Meta description stranice |
+| `notes` | text, nullable | Ručne napomene korisnika |
+| `reviewed_at` | timestamp, nullable | Datum ručne potvrde |
+| `started_at` | timestamp, nullable | Početak obrade |
+| `completed_at` | timestamp, nullable | Kraj obrade |
+| `error_message` | text, nullable | Razlog neuspeha |
+| `created_at` | timestamp | Datum kreiranja audita |
+| `updated_at` | timestamp | Datum poslednje izmene |
+
+Tabela ima indeks nad `company_lead_id` i `created_at`, što podržava
+prikaz istorije audita po leadu, od najnovijeg ka najstarijem.
+
+AI, Lighthouse, screenshot, konverzioni i odobrenja podaci biće dodati
+kasnije kroz zasebne migracije, kada bude definisana njihova stvarna
+struktura i izvor podataka.
 
 ---
 
-## Planirana polja
+## Statusi audita
 
-### Identitet i tok obrade
-
-| Polje | Primer | Svrha |
+| Interna vrednost | Prikaz | Značenje |
 |---|---|---|
-| `id` | `1` | Primarni ključ |
-| `company_lead_id` | `42` | Lead kojem audit pripada |
-| `requested_url` | `https://primer.rs` | URL predat na proveru |
-| `final_url` | `https://www.primer.rs/` | Krajnji URL nakon redirekcija |
-| `status` | `completed` | Stanje audita |
-| `audit_version` | `v1` | Verzija audit logike |
-| `started_at` | datum i vreme | Početak obrade |
-| `completed_at` | datum i vreme | Kraj obrade |
-| `error_message` | tekst | Razlog neuspeha, kada postoji |
+| `pending` | Pending | Audit je kreiran, ali još nije završen |
+| `completed` | Completed | Audit je završen |
+| `failed` | Failed | Audit nije uspeo |
 
-Predloženi statusi:
+Status se validira u `CompanyWebsiteAudit` modelu. Nepoznata vrednost
+se ne može sačuvati.
+
+---
+
+## Ručni UI tok
+
+Trenutna verzija koristi ručni unos audita na detalju firme.
 
 ```text
-queued
-running
-completed
-failed
-cancelled
+1. Korisnik otvori detalj firme sa postojećim CRM leadom.
+2. Korisnik popuni formu „Dodaj website audit“.
+3. Sistem validira URL, status i tehničke podatke.
+4. Sistem kreira novi audit zapis.
+5. Novi audit se prikazuje na vrhu sekcije „Website audit istorija“.
 ```
 
-### Tehnička dostupnost
-
-| Polje | Primer | Svrha |
-|---|---|---|
-| `http_status` | `200` | HTTP odgovor krajnjeg URL-a |
-| `is_reachable` | `true` | Da li je provera uspela |
-| `response_time_ms` | `680` | Vreme odgovora |
-| `has_https` | `true` | Da li krajnji URL koristi HTTPS |
-| `redirect_count` | `1` | Broj redirekcija |
-| `page_title` | `Naziv firme` | Javni naslov stranice |
-| `meta_description` | tekst | SEO osnovni podatak, ako postoji |
-
-### Lighthouse rezultati
-
-| Polje | Opseg | Svrha |
-|---|---:|---|
-| `performance_score` | 0–100 | Laboratorijska ocena performansi |
-| `accessibility_score` | 0–100 | Laboratorijska ocena pristupačnosti |
-| `best_practices_score` | 0–100 | Laboratorijska ocena tehničkih praksi |
-| `seo_score` | 0–100 | Laboratorijska SEO ocena |
-| `lighthouse_report_path` | putanja | Sačuvan detaljan Lighthouse izveštaj |
-
-Napomena: Lighthouse rezultat je laboratorijska procena iz jednog
-testa, a ne potpuna slika stvarnog iskustva svih korisnika.
-
-### Vizuelni artefakti
-
-| Polje | Primer | Svrha |
-|---|---|---|
-| `desktop_screenshot_path` | putanja | Snimak desktop prikaza |
-| `mobile_screenshot_path` | putanja | Snimak mobilnog prikaza |
-| `desktop_viewport` | `1440x900` | Dimenzije desktop provere |
-| `mobile_viewport` | `390x844` | Dimenzije mobilne provere |
-
-Snimci su dokaz onoga što je javno bilo prikazano u trenutku provere.
-
-### AI procena
-
-| Polje | Primer | Svrha |
-|---|---|---|
-| `ai_status` | `completed` | Status AI obrade |
-| `ai_model` | naziv modela | Model korišćen za analizu |
-| `ai_prompt_version` | `website-audit-v1` | Verzija instrukcije |
-| `ai_confidence` | `medium` | Pouzdanost procene |
-| `mobile_status` | `poor` | Vizuelna procena mobilnog prikaza |
-| `desktop_status` | `good` | Vizuelna procena desktop prikaza |
-| `design_status` | `dated` | Vizuelni i profesionalni utisak |
-| `conversion_status` | `weak` | Jasnoća CTA i toka do kontakta |
-| `recommended_work` | `redesign` | Predloženi tip usluge |
-| `priority_score` | `78` | Predloženi prioritet |
-| `findings_json` | JSON | Strukturisani pojedinačni nalazi |
-| `ai_summary` | tekst | Sažetak procene |
-| `recommended_actions` | tekst | Predložene izmene |
-
-Predložene vrednosti:
+Ruta za kreiranje audita:
 
 ```text
-mobile_status:
-unknown
-good
-poor
-broken
-
-desktop_status:
-unknown
-good
-poor
-broken
-
-design_status:
-unknown
-modern
-dated
-poor
-
-conversion_status:
-unknown
-strong
-adequate
-weak
-
-recommended_work:
-unknown
-none
-minor_improvements
-improvements
-redesign
-new_website
-
-ai_confidence:
-low
-medium
-high
+POST /companies/{registration_number}/website-audits
 ```
 
-AI procena mora biti zasnovana na tehničkim rezultatima i screenshotovima,
-a ne na pretpostavkama o poslovanju firme.
+Audit se može dodati samo firmi koja već ima CRM lead.
 
-### Ljudska provera
+---
 
-| Polje | Svrha |
-|---|---|
-| `reviewed_at` | Datum ručne provere |
-| `review_notes` | Korekcije i dopune korisnika |
-| `approved_at` | Datum odobrenja nalaza |
-| `approval_notes` | Razlog odobrenja ili ograničenja korišćenja |
+## Prikaz istorije
 
-U početnoj lokalnoj verziji nema korisničkih naloga, pa nije potrebno
-dodavati `reviewed_by` i `approved_by`. Ta polja dolaze tek sa
-autentikacijom i više korisnika.
+Na detalju firme, u sekciji **Website audit istorija**, prikazuju se:
+
+- redni broj audita;
+- status;
+- URL provere;
+- krajnji URL;
+- HTTP status;
+- dostupnost;
+- HTTPS status;
+- vreme odgovora;
+- datum audita;
+- audit verzija;
+- naslov stranice;
+- meta description;
+- ručne napomene;
+- greška, ako postoji.
+
+Auditi se prikazuju od najnovijeg ka najstarijem.
 
 ---
 
@@ -230,28 +185,25 @@ osim ako postoji konkretan dokaz i korisnik ručno prilagodi poruku.
 ## Planirani tok rada
 
 ```text
-1. Korisnik potvrdi ili unese URL u CRM formi.
-2. Korisnik ručno pokrene audit za jedan lead.
-3. Sistem kreira audit sa statusom queued.
-4. Pozadinski posao proverava URL i čuva tehničke rezultate.
-5. Sistem pravi desktop i mobilni screenshot.
-6. Sistem pokreće Lighthouse i čuva rezultate.
-7. AI analizira dokaze i vraća strukturisan rezultat.
-8. Audit dobija status completed ili failed.
-9. Korisnik pregleda screenshotove, rezultate i AI predloge.
-10. Korisnik upisuje review notes i odobrava ili odbacuje nalaze.
-11. Tek nakon odobrenja može se generisati nacrt ponude.
+1. Korisnik otvori detalj firme sa postojećim CRM leadom.
+2. Korisnik ručno popuni formu za website audit.
+3. Sistem kreira audit sa izabranim statusom, trenutno najčešće
+   `pending`, `completed` ili `failed`.
+4. Kasnije: sistem pokreće tehničku proveru URL-a.
+5. Kasnije: sistem pravi desktop i mobilni screenshot.
+6. Kasnije: sistem pokreće Lighthouse i čuva rezultate.
+7. Kasnije: AI analizira dokaze i vraća strukturisan rezultat.
+8. Kasnije: korisnik pregleda, potvrđuje ili odbacuje nalaze.
+9. Kasnije: tek nakon odobrenja može se generisati nacrt ponude.
 ```
 
-U prvoj verziji audit se pokreće za jednu firmu ručno. Batch obrada,
+U prvoj verziji audit se unosi ručno za jednu firmu. Batch obrada,
 queue i zakazani ponovni audit dolaze tek kada pojedinačni audit bude
 pouzdan.
 
 ---
 
 ## Tehnološki plan
-
-Planirani slojevi:
 
 | Sloj | Predlog | Uloga |
 |---|---|---|
@@ -263,14 +215,17 @@ Planirani slojevi:
 | AI analiza | API izabran kasnije | Strukturisani nalazi iz dokaza |
 | Skladištenje | Laravel storage | Screenshotovi i izveštaji |
 
-Pre implementacije treba proveriti lokalne Node.js, Chrome/Chromium i
-Lighthouse uslove, kao i način pokretanja Playwright procesa iz Laravel
-queue posla.
+Pre implementacije tehničke provere treba proveriti lokalne Node.js,
+Chrome/Chromium i Lighthouse uslove, kao i način pokretanja Playwright
+procesa iz Laravel queue posla.
 
 ---
 
-## Van opsega prve verzije
+## Van opsega trenutne verzije
 
+- AI analiza, Lighthouse rezultati i screenshotovi.
+- Automatsko pokretanje tehničke provere URL-a.
+- Masovno kreiranje audita za više firmi.
 - Masovno automatsko crawl-ovanje svih firmi.
 - Zaobilaženje CAPTCHA, autentikacije ili drugih zaštita.
 - Automatizovano slanje e-mailova i poruka.
