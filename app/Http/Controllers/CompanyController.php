@@ -104,8 +104,24 @@ class CompanyController extends Controller
     }
     public function storeLead(Request $request, Company $company): RedirectResponse
     {
+        $request->merge([
+            'website_url' => $this->normalizeWebsiteUrl(
+                $request->input('website_url')
+            ),
+        ]);
         $validated = $request->validate([
-            'website_url' => ['nullable', 'string', 'max:500'],
+            'website_url' => [
+                'nullable',
+                'url',
+                'max:500',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $host = parse_url((string) $value, PHP_URL_HOST);
+
+                    if ($host === false || $host === null || ! str_contains($host, '.')) {
+                        $fail('Website URL mora sadržati validan domen, na primer primer.rs.');
+                    }
+                },
+            ],
             'website_status' => ['required', Rule::in(array_keys(CompanyLead::WEBSITE_STATUSES))],
             'phone' => ['nullable', 'string', 'max:100'],
             'email' => ['nullable', 'email', 'max:255'],
@@ -123,8 +139,25 @@ class CompanyController extends Controller
 
     public function updateLead(Request $request, Company $company): RedirectResponse
     {
+        $request->merge([
+            'website_url' => $this->normalizeWebsiteUrl(
+                $request->input('website_url')
+            ),
+        ]);
+
         $validated = $request->validate([
-            'website_url' => ['nullable', 'string', 'max:500'],
+            'website_url' => [
+                'nullable',
+                'url',
+                'max:500',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $host = parse_url((string) $value, PHP_URL_HOST);
+
+                    if ($host === false || $host === null || ! str_contains($host, '.')) {
+                        $fail('Website URL mora sadržati validan domen, na primer primer.rs.');
+                    }
+                },
+            ],
             'website_status' => ['required', Rule::in(array_keys(CompanyLead::WEBSITE_STATUSES))],
             'phone' => ['nullable', 'string', 'max:100'],
             'email' => ['nullable', 'email', 'max:255'],
@@ -202,5 +235,19 @@ class CompanyController extends Controller
                 'sort' => $sort,
             ],
         ]);
+    }
+    private function normalizeWebsiteUrl(?string $websiteUrl): ?string
+    {
+        $websiteUrl = trim((string) $websiteUrl);
+
+        if ($websiteUrl === '') {
+            return null;
+        }
+
+        if (! preg_match('#^https?://#i', $websiteUrl)) {
+            $websiteUrl = 'https://' . $websiteUrl;
+        }
+
+        return $websiteUrl;
     }
 }
