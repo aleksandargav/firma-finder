@@ -302,6 +302,11 @@
                 <strong>Website:</strong>
                 {{ App\Models\CompanyLead::WEBSITE_STATUSES[$company->lead->website_status] ?? $company->lead->website_status }}
 
+                <br>
+
+                <strong>Poslednja provera sajta:</strong>
+                {{ $company->lead->website_checked_at?->format('d.m.Y. H:i') ?? 'Još nije provereno' }}
+
                 @if ($company->lead->contacted_at)
                     <br>
                     <strong>Kontaktirano:</strong>
