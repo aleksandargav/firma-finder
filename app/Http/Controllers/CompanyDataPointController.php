@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Models\CompanyDataPoint;
+use App\Models\CompanyWebsiteAudit;
+use App\Services\WebsiteAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -102,6 +104,50 @@ class CompanyDataPointController extends Controller
         return redirect()
             ->route('companies.show', $dataPoint->company)
             ->with('success', 'Enrichment kandidat je označen za pregled.');
+    }
+
+    public function runAudit(
+        CompanyDataPoint $dataPoint,
+        WebsiteAuditService $auditService
+    ): RedirectResponse {
+        $company = $dataPoint->company;
+
+        if (! $company) {
+            return redirect()
+                ->route('companies.index')
+                ->with('error', 'Enrichment zapis nije povezan sa APR firmom.');
+        }
+
+        if ($dataPoint->field !== CompanyDataPoint::FIELD_WEBSITE) {
+            return redirect()
+                ->route('companies.show', $company)
+                ->with('error', 'Website audit se može pokrenuti samo za website kandidata.');
+        }
+
+        if ($dataPoint->status !== CompanyDataPoint::STATUS_VERIFIED) {
+            return redirect()
+                ->route('companies.show', $company)
+                ->with('error', 'Website audit se može pokrenuti samo za potvrđen kandidat.');
+        }
+
+        $lead = $company->lead;
+
+        if (! $lead) {
+            return redirect()
+                ->route('companies.show', $company)
+                ->with('error', 'Website audit se može pokrenuti samo za firmu koja ima CRM lead.');
+        }
+
+        $audit = $lead->websiteAudits()->create([
+            'requested_url' => $dataPoint->value,
+            'status' => CompanyWebsiteAudit::STATUS_PENDING,
+        ]);
+
+        $auditService->check($audit);
+
+        return redirect()
+            ->route('companies.show', $company)
+            ->with('success', 'Website audit je pokrenut i završen.');
     }
 
     private function normalizeValue(string $field, string $value): ?string

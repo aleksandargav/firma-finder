@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Company;
 use App\Models\CompanyDataPoint;
 use App\Models\CompanyLead;
+use App\Models\CompanyWebsiteAudit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class CompanyDataPointUiTest extends TestCase
@@ -381,5 +383,118 @@ class CompanyDataPointUiTest extends TestCase
         $this->assertDatabaseMissing('company_leads', [
             'company_id' => $company->id,
         ]);
+    }
+
+    public function test_user_can_run_website_audit_for_verified_website_data_point(): void
+    {
+        Http::fake([
+            'https://example.com/*' => Http::response(
+                '<html><head><title>Example</title></head><body>Example</body></html>',
+                200
+            ),
+        ]);
+
+        $company = $this->createCompany('12345692');
+
+        $company->lead()->create([
+            'website_url' => 'https://example.com',
+            'website_status' => CompanyLead::WEBSITE_STATUS_ACTIVE,
+            'lead_status' => CompanyLead::LEAD_STATUS_NEW,
+            'lead_score' => 0,
+        ]);
+
+        $dataPoint = $this->createDataPoint(
+            $company,
+            CompanyDataPoint::FIELD_WEBSITE,
+            'https://example.com',
+            CompanyDataPoint::STATUS_VERIFIED
+        );
+
+        $response = $this->post("/data-points/{$dataPoint->id}/run-audit");
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('company_website_audits', [
+            'company_lead_id' => $company->lead->id,
+            'requested_url' => 'https://example.com',
+            'status' => CompanyWebsiteAudit::STATUS_COMPLETED,
+            'http_status' => 200,
+            'is_reachable' => true,
+            'has_https' => true,
+        ]);
+    }
+
+    public function test_user_cannot_run_audit_for_unverified_website_data_point(): void
+    {
+        Http::fake();
+
+        $company = $this->createCompany('12345693');
+
+        $company->lead()->create([
+            'website_url' => 'https://example.com',
+            'website_status' => CompanyLead::WEBSITE_STATUS_ACTIVE,
+            'lead_status' => CompanyLead::LEAD_STATUS_NEW,
+            'lead_score' => 0,
+        ]);
+
+        $dataPoint = $this->createDataPoint(
+            $company,
+            CompanyDataPoint::FIELD_WEBSITE,
+            'https://example.com',
+            CompanyDataPoint::STATUS_CANDIDATE
+        );
+
+        $response = $this->post("/data-points/{$dataPoint->id}/run-audit");
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseCount('company_website_audits', 0);
+    }
+
+    public function test_user_cannot_run_audit_for_non_website_data_point(): void
+    {
+        Http::fake();
+
+        $company = $this->createCompany('12345694');
+
+        $company->lead()->create([
+            'website_url' => 'https://example.com',
+            'website_status' => CompanyLead::WEBSITE_STATUS_ACTIVE,
+            'lead_status' => CompanyLead::LEAD_STATUS_NEW,
+            'lead_score' => 0,
+        ]);
+
+        $dataPoint = $this->createDataPoint(
+            $company,
+            CompanyDataPoint::FIELD_EMAIL,
+            'info@example.com',
+            CompanyDataPoint::STATUS_VERIFIED
+        );
+
+        $response = $this->post("/data-points/{$dataPoint->id}/run-audit");
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseCount('company_website_audits', 0);
+    }
+
+    public function test_user_cannot_run_audit_without_company_lead(): void
+    {
+        Http::fake();
+
+        $company = $this->createCompany('12345695');
+
+        $dataPoint = $this->createDataPoint(
+            $company,
+            CompanyDataPoint::FIELD_WEBSITE,
+            'https://example.com',
+            CompanyDataPoint::STATUS_VERIFIED
+        );
+
+        $response = $this->post("/data-points/{$dataPoint->id}/run-audit");
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseCount('company_website_audits', 0);
     }
 }

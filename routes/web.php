@@ -43,3 +43,6 @@ Route::post('/data-points/{dataPoint}/needs-review', [CompanyDataPointController
 
 Route::post('/data-points/{dataPoint}/apply-to-lead', [CompanyController::class, 'applyWebsiteDataPointToLead'])
     ->name('data-points.apply-to-lead');
+
+Route::post('/data-points/{dataPoint}/run-audit', [CompanyDataPointController::class, 'runAudit'])
+    ->name('data-points.run-audit');

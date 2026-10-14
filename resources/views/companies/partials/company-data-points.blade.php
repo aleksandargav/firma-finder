@@ -166,6 +166,19 @@
                                 </button>
                             </form>
                         @endif
+
+                        @if ($dataPoint->field === App\Models\CompanyDataPoint::FIELD_WEBSITE && $dataPoint->status === App\Models\CompanyDataPoint::STATUS_VERIFIED && $company->lead)
+                            <form
+                                method="POST"
+                                action="{{ route('data-points.run-audit', $dataPoint) }}"
+                            >
+                                @csrf
+
+                                <button type="submit" class="audit-run-button">
+                                    Pokreni website audit
+                                </button>
+                            </form>
+                        @endif
                     </div>
                 </div>
 
