@@ -22,7 +22,7 @@ class CompanyDataPointUiTest extends TestCase
 
     private function createWebsiteCandidate(Company $company, string $url): CompanyDataPoint
     {
-        return $company->companyDataPoints()->create([
+        return $company->dataPoints()->create([
             'field' => CompanyDataPoint::FIELD_WEBSITE,
             'value' => $url,
             'source' => CompanyDataPoint::SOURCE_MANUAL,

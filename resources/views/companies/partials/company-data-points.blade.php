@@ -44,12 +44,12 @@
         </div>
     </form>
 
-    @if ($company->companyDataPoints->isEmpty())
+    @if ($company->dataPoints->isEmpty())
         <div class="lead-summary muted">
             Za ovu firmu još nema sačuvanih website kandidata.
         </div>
     @else
-        @foreach ($company->companyDataPoints as $dataPoint)
+        @foreach ($company->dataPoints as $dataPoint)
             <article class="audit-item">
                 <div class="audit-header">
                     <strong>{{ $dataPoint->value }}</strong>

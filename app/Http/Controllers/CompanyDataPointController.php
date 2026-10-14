@@ -34,7 +34,7 @@ class CompanyDataPointController extends Controller
             'notes' => ['nullable', 'string', 'max:5000'],
         ]);
 
-        $company->companyDataPoints()->create([
+        $company->dataPoints()->create([
             'field' => CompanyDataPoint::FIELD_WEBSITE,
             'value' => $validated['value'],
             'source' => CompanyDataPoint::SOURCE_MANUAL,

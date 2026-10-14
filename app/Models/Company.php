@@ -35,7 +35,7 @@ class Company extends Model
         return $this->hasOne(CompanyLead::class);
     }
 
-    public function companyDataPoints(): HasMany
+    public function dataPoints(): HasMany
     {
         return $this->hasMany(CompanyDataPoint::class);
     }

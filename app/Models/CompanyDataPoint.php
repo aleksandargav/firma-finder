@@ -9,7 +9,9 @@ use Illuminate\Validation\Rule;
 class CompanyDataPoint extends Model
 {
     public const FIELD_WEBSITE = 'website';
-
+    public const FIELD_EMAIL = 'email';
+    public const FIELD_PHONE = 'phone';
+    public const FIELD_ADDRESS = 'address';
     public const SOURCE_MANUAL = 'manual';
     public const SOURCE_COMPANYWALL = 'companywall';
     public const SOURCE_OPENSTREETMAP = 'openstreetmap';
@@ -70,6 +72,9 @@ class CompanyDataPoint extends Model
     {
         return [
             self::FIELD_WEBSITE,
+            self::FIELD_EMAIL,
+            self::FIELD_PHONE,
+            self::FIELD_ADDRESS,
         ];
     }
 
@@ -152,5 +157,10 @@ class CompanyDataPoint extends Model
             'verified_by' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
         ];
+    }
+
+    public static function rules(): array
+    {
+        return self::validationRules();
     }
 }
