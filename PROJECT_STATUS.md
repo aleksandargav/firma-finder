@@ -41,6 +41,17 @@ APR podaci se nikada ne menjaju CRM, enrichment ili audit podacima.
 APR JSON izvor koji se trenutno koristi ne sadrži website URL. Provereno je
 da svih 134.374 zapisa ima samo osnovna registarska polja.
 
+### APR sync
+
+APR podaci se preuzimaju kroz APR Open Data API u lokalni JSON snapshot.
+
+Snapshot se zatim uvozi u `companies` kroz `apr:import`, koristeći upsert
+po matičnom broju firme. Datum APR preseka čuva se u
+`source_snapshot_date`, a vreme lokalnog uvoza u `imported_at`.
+
+APR sync ne briše firme automatski i ne menja CRM, enrichment ili audit
+podatke.
+
 ### CRM podaci
 
 Tabela `company_leads` čuva ručne CRM podatke:
@@ -116,6 +127,26 @@ APR podaci u `companies` se nikada ne menjaju audit podacima.
 - Lista koristi paginaciju od 50 firmi po stranici.
 - Detalj firme je dostupan na:
   `/companies/{registration_number}`.
+
+### APR API sync
+
+- Dodat je `AprApiService` za preuzimanje APR snapshot-a preko
+  APR Open Data API-ja.
+- Dodata je Artisan komanda `apr:sync`.
+- API snapshot se čuva lokalno u
+  `storage/app/apr/snapshots/{YYYYMMDD}/companies.json`.
+- `apr:import` je proširen da podržava APR API JSON format.
+- Import koristi upsert po matičnom broju firme.
+- APR sync ažurira samo izvorne APR podatke.
+- APR sync ne menja CRM, enrichment ili website audit podatke.
+- APR sync ne briše firme koje nisu prisutne u novom snapshot-u.
+- Lokalna baza je sinhronizovana sa APR presekom `2026-09-30`.
+- Ukupan broj firmi je 134.374.
+- Pun sync je uspešno obradio 134.374 zapisa bez preskočenih.
+- Svi zapisi imaju `source_snapshot_date = 2026-09-30`.
+- Mali test uvoz od 5 zapisa je potvrdio ispravno ažuriranje postojećih
+  zapisa bez dupliranja.
+- Kompletan test suite prolazi: 42 testa i 112 asercija.
 
 ### CRM
 
@@ -250,7 +281,7 @@ proveru prikaza istorije audita, UI forme i tehničke provere sajta.
 
 ## Aktivni fokus
 
-Website audit osnova i ručna tehnička provera URL-a su završeni.
+APR API sync je završen i verifikovan.
 
 Sledeći aktivni fokus je Company enrichment temelj: `company_data_points`,
 ručni unos i potvrda website kandidata, a zatim OSM, Wikidata i CompanyWall
@@ -295,8 +326,7 @@ Tek nakon toga dodaju se OSM, Wikidata i CompanyWall izvori.
 - URL, telefon i e-mail unose se ručno.
 - Website audit se unosi ručno kroz formu na detalju firme.
 - Tehnička provera URL-a se pokreće ručno za pojedinačan audit.
-- `website_checked_at` se automatski postavlja pri kreiranju leada i
-  promeni statusa sajta.
+- `website_checked_at` se automatski postavlja pri kreiranju leada i promeni statusa sajta.
 - Nema automatskog ili zakazanog ponavljanja tehničke provere.
 - Nema Lighthouse rezultata ni vizuelnog audita.
 - AI analiza, Lighthouse rezultati i screenshotovi nisu implementirani.
@@ -306,3 +336,8 @@ Tek nakon toga dodaju se OSM, Wikidata i CompanyWall izvori.
 - Nema `company_data_points` tabele ni enrichment servisa.
 - CompanyWall, OpenStreetMap i Wikidata enrichment nisu implementirani.
 - CompanyWall se ne koristi dok ne budu pisano potvrđeni uslovi korišćenja.
+- APR sync je ručna Artisan komanda.
+- Nema zakazanog automatskog APR sync-a.
+- Nema inkrementalnog APR sync-a po promenama.
+- Nema notifikacija o neuspehu APR sync-a.
+- Nema automatskog brisanja firmi koje nestanu iz novijeg APR preseka.

@@ -289,6 +289,54 @@ zabranjuju automatizovano prikupljanje podataka bez saglasnosti.
 
 ---
 
+## 2026-10-14 — APR sync koristi snapshot i upsert
+
+### Odluka
+
+APR podaci se preuzimaju preko APR Open Data API-ja u lokalni JSON
+snapshot, a zatim se uvoze u tabelu `companies` kroz `apr:import`.
+
+Import koristi upsert po matičnom broju firme.
+
+### Razlog
+
+Odvojeno čuvanje snapshot-a omogućava ponovljiv uvoz, lakše otklanjanje
+grešaka i testiranje bez ponovnog pozivanja API-ja.
+
+Upsert po matičnom broju sprečava dupliranje firmi pri ponovljenom
+uvozu istog preseka.
+
+### Posledica
+
+- `apr:sync` ne upisuje direktno u bazu.
+- `apr:import` je jedina faza koja menja tabelu `companies`.
+- APR import ažurira samo izvorne APR podatke.
+- CRM, enrichment i audit podaci ostaju netaknuti.
+- `source_snapshot_date` jasno označava APR presek svakog zapisa.
+- `imported_at` beleži vreme poslednjeg lokalnog uvoza.
+
+---
+
+## 2026-10-14 — APR sync ne briše firme automatski
+
+### Odluka
+
+APR sync ne briše firme koje nisu prisutne u novom API snapshot-u.
+
+### Razlog
+
+Nestanak firme iz jednog preseka ne mora automatski značiti da lokalni
+CRM karton, istorija rada ili audit podaci više nisu relevantni.
+
+### Posledica
+
+- Lokalni broj firmi može biti veći od broja zapisa u novom snapshot-u.
+- Eventualno označavanje neaktivnih ili uklonjenih firmi biće zasebna
+  odluka i zasebna migracija.
+- CRM podaci se ne brišu kao posledica APR sync-a.
+
+---
+
 ## Pravilo za buduće izmene šeme
 
 Kada je Laravel migracija već izvršena, ne menja se postojeći migration

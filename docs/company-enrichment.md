@@ -58,7 +58,15 @@ matični broj i ne mogu sami da pouzdano potvrde identitet firme.
 ## Arhitektura
 
 ```text
-APR firma
+APR Open Data API
+   ↓
+apr:sync
+   ↓
+Lokalni APR snapshot
+   ↓
+apr:import
+   ↓
+companies
    ↓
 Enrichment izvori
    ├── Ručni unos
@@ -81,6 +89,9 @@ company_leads.website_url
 Website audit / Lighthouse / screenshot
 ```
 
+APR Open Data API je trenutno implementiran kao izvor identiteta firme.
+On osvežava lokalni APR katalog, ali ne dodaje website ni kontakt podatke.
+
 ---
 
 ## Izvori podataka
@@ -92,7 +103,11 @@ Website audit / Lighthouse / screenshot
 | OpenStreetMap | `openstreetmap` | Website, telefon, e-mail, lokacija | Planiran |
 | Wikidata | `wikidata` | Zvanični sajt za poznate subjekte | Planiran |
 | Google Places | `google_places` | Website, telefon, adresa, kategorija | Opciono, plaćeno |
-| APR Open Data | `apr` | MB, PIB, naziv, status, delatnost | Planiran kao identitet izvor |
+| APR Open Data | `apr` | MB, naziv, status, delatnost, datum preseka | Implementiran kao identitet izvor |
+
+APR Open Data API je povezan kroz `AprApiService`, komandu `apr:sync` i
+postojeći `apr:import`. Lokalni APR katalog se ažurira upsertom po
+matičnom broju firme.
 
 CompanyWall, ako potvrdi pristup i website podatak, treba da bude
 prioritetni automatski izvor jer omogućava povezivanje preko MB/PIB.
@@ -119,6 +134,9 @@ Prioritet uparivanja je:
 
 Ako enrichment izvor vrati MB ili PIB koji ne postoji u APR bazi, zapis se
 čuva kao `unmatched` i ne povezuje se sa CRM leadom.
+
+APR sync trenutno koristi matični broj kao stabilan ključ za upsert
+lokalnih APR zapisa.
 
 ---
 
@@ -286,6 +304,25 @@ za automatsko prikupljanje podataka.
 
 ---
 
+## APR Open Data — trenutni status
+
+APR Open Data API je implementiran kao izvor identiteta firme.
+
+Implementirano je:
+
+- `AprApiService` za preuzimanje APR snapshot-a;
+- `apr:sync` za preuzimanje kompletnog snapshot-a;
+- lokalno čuvanje snapshot-a u `storage/app/apr/snapshots/`;
+- `apr:import` za upis ili ažuriranje firmi u `companies`;
+- upsert po matičnom broju;
+- čuvanje datuma APR preseka u `source_snapshot_date`;
+- čuvanje datuma lokalnog uvoza u `imported_at`.
+
+APR sync ne dodaje website URL, telefon, e-mail ili bilo koji enrichment
+podatak. Njegova uloga je da lokalni APR identitet firme bude ažuran.
+
+---
+
 ## Regionalni plan
 
 Prva verzija enrichment sistema razvija se za Srbiju.
@@ -294,7 +331,7 @@ Kasnije se dodaju adapteri po zemljama:
 
 | Zemlja | Izvor / pristup | Status |
 |---|---|---|
-| Srbija | APR Open Data API + enrichment izvori | Prvi prioritet |
+| Srbija | APR Open Data API + enrichment izvori | APR identitet izvor implementiran |
 | Slovenija | AJPES / PRS | Kasnije |
 | Bugarska | CompanyBook.BG | Kasnije |
 | Crna Gora | CompanyWall ili komercijalni izvor | Kasnije |
@@ -316,6 +353,7 @@ normalizovani format podataka.
 - Ne koriste se izvori koji zabranjuju automatizovano prikupljanje.
 - Ne vrši se masovno crawl-ovanje svih firmi u prvoj verziji.
 - Ne šalju se poruke, e-mailovi ili ponude bez ručnog odobrenja.
+- APR sync ne briše firme koje nestanu iz novijeg preseka.
 
 ---
 

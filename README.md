@@ -1,62 +1,181 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Firma Finder
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Firma Finder je lokalna Laravel aplikacija za pronalaženje, pregled i
+kvalifikaciju privrednih društava iz APR registra Srbije.
 
-## About Laravel
+Primarni cilj je organizovanje prodajnog procesa za usluge izrade,
+redizajna i unapređenja poslovnih sajtova.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tehnologija
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Laravel
+- PHP 8.5
+- SQLite
+- Blade
+- Lokalni razvoj: `php8.5 artisan serve`
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Osnovne funkcionalnosti
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### APR katalog
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- Pregled APR firmi na `/companies`.
+- Pretraga po nazivu firme i matičnom broju.
+- Filteri po opštini, šifri delatnosti i APR statusu.
+- Paginacija i detalj firme na `/companies/{registration_number}`.
 
-## Agentic Development
+### APR API sync
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+- Preuzimanje APR snapshot-a preko APR Open Data API-ja.
+- Lokalno čuvanje snapshot-a pre upisa u bazu.
+- Upsert firmi po matičnom broju.
+- Čuvanje datuma APR preseka i datuma lokalnog uvoza.
+- APR sync ne menja CRM, enrichment ili audit podatke.
+- APR sync ne briše firme automatski.
+
+### CRM
+
+- Ručno kreiranje i ažuriranje CRM leada za firmu.
+- Website URL, status sajta, telefon, e-mail, lead status, lead score
+  i napomene.
+- 1:1 veza između firme i CRM leada.
+- CRM lista na `/leads` sa pretragom, filterima i sortiranjem.
+- Filter kataloga: sve firme, firme sa leadom, firme bez leada.
+- Validacija i normalizacija website URL-a.
+- Automatsko praćenje datuma poslednje provere sajta i datuma prvog
+  kontakta.
+
+### Website audit
+
+- Ručno kreiranje website audita za CRM lead.
+- Čuvanje istorije audita po leadu.
+- Ručna tehnička provera URL-a.
+- Čuvanje HTTP statusa, krajnjeg URL-a, HTTPS statusa, broja redirekcija,
+  vremena odgovora, naslova stranice i meta description-a.
+- Prikaz istorije audita na detalju firme.
+
+---
+
+## APR komande
+
+### Preuzimanje APR snapshot-a
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+php8.5 artisan apr:sync \
+  --date=2026-09-30
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Snapshot se čuva u:
 
-## Contributing
+```text
+storage/app/apr/snapshots/{YYYYMMDD}/companies.json
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Test uvoz
 
-## Code of Conduct
+```bash
+php8.5 artisan apr:import \
+  --file=storage/app/apr/snapshots/20260930/companies.json \
+  --limit=5 \
+  --batch=500 \
+  --write
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Pun uvoz
 
-## Security Vulnerabilities
+```bash
+php8.5 artisan apr:import \
+  --file=storage/app/apr/snapshots/20260930/companies.json \
+  --limit=134374 \
+  --batch=500 \
+  --write
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Bez `--write`, `apr:import` radi u dry-run režimu.
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Arhitektura podataka
 
-## Development
+```text
+APR Open Data API
+   ↓
+apr:sync
+   ↓
+Lokalni APR snapshot
+   ↓
+apr:import
+   ↓
+companies
+   ↓
+CRM / enrichment / website audit
+```
 
-This project is version-controlled with Git and synchronized with a private GitHub repository.
+### Tabele
+
+| Tabela | Svrha |
+|---|---|
+| `companies` | Izvorni APR podaci o firmama |
+| `company_leads` | Ručni CRM podaci, 1:1 sa firmom |
+| `company_data_points` | Planirani enrichment podaci i website kandidati |
+| `company_website_audits` | Istorija website audita, 1:N sa CRM leadom |
+
+### Osnovna pravila
+
+- APR podaci su izvorni registarski podaci.
+- CRM podaci se nikada ne prepisuju APR importom.
+- Enrichment podaci se čuvaju odvojeno od APR i CRM podataka.
+- Website URL ulazi u CRM samo kao potvrđena vrednost.
+- Website audit čuva istoriju provera, a ne prepisuje stare zapise.
+- AI ne šalje poruke, e-mailove ili ponude bez ručnog odobrenja.
+
+---
+
+## Dokumentacija
+
+- [`PROJECT_STATUS.md`](PROJECT_STATUS.md) — trenutno stanje projekta.
+- [`ROADMAP.md`](ROADMAP.md) — plan razvoja i status zadataka.
+- [`DECISIONS.md`](DECISIONS.md) — arhitektonske odluke.
+- [`APR_DATA_SYNC.md`](APR_DATA_SYNC.md) — APR API sync i uvoz.
+- [`docs/company-enrichment.md`](docs/company-enrichment.md) — enrichment
+  arhitektura i plan izvora podataka.
+- [`docs/crm.md`](docs/crm.md) — CRM modul.
+- [`docs/website-audits.md`](docs/website-audits.md) — website audit modul.
+
+---
+
+## Testiranje
+
+Pokreni kompletan test suite:
+
+```bash
+php8.5 artisan test
+```
+
+Trenutni status:
+
+- 42 testa;
+- 112 asercija;
+- svi testovi prolaze.
+
+---
+
+## Razvoj
+
+Instalacija zavisnosti:
+
+```bash
+composer install
+```
+
+Pokretanje lokalnog razvojnog servera:
+
+```bash
+php8.5 artisan serve
+```
+
+Projekat je verzionisan kroz Git i sinhronizovan sa privatnim GitHub
+repozitorijumom.

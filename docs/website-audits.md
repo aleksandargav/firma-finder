@@ -33,6 +33,9 @@ automatsku konačnu stručnu ili poslovnu ocenu.
    pristupne zabrane ili druge mere kontrole pristupa.
 9. Provere moraju biti ograničene po brzini i obimu.
 
+APR API sync može osvežiti izvorne APR podatke u tabeli `companies`, ali
+ne kreira, menja ili briše website audite.
+
 ---
 
 ## Implementirani model podataka
@@ -248,6 +251,23 @@ pouzdan.
 Pre implementacije Lighthouse-a i screenshotova treba proveriti lokalne
 Node.js, Chrome/Chromium i Lighthouse uslove, kao i način pokretanja
 Playwright procesa iz Laravel queue posla.
+
+---
+
+## Testovi
+
+Website audit funkcionalnost je pokrivena feature testovima:
+
+- `tests/Feature/CompanyWebsiteAuditTest.php` — model, relacije,
+  više audita, cascade brisanje i validacija statusa.
+- `tests/Feature/CompanyWebsiteAuditUiTest.php` — ručno kreiranje
+  audita kroz UI, validacija URL-a i statusa, kao i sprečavanje
+  kreiranja audita bez CRM leada.
+- `tests/Feature/WebsiteAuditTechnicalCheckTest.php` — uspešna tehnička
+  provera, neuspeh kada sajt nije dostupan, nedostajući URL i pokretanje
+  provere kroz UI.
+
+Testovi koriste SQLite bazu u memoriji i ne diraju lokalnu APR bazu.
 
 ---
 

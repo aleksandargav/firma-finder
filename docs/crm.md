@@ -19,6 +19,10 @@ CRM tabela `company_leads` sadrži podatke koji nastaju tokom internog rada:
 
 APR podaci se nikada ne menjaju kroz CRM formu.
 
+APR katalog se može osvežavati kroz APR API sync. Taj sync ažurira samo
+izvorne APR podatke u `companies` i ne menja CRM, enrichment ili website
+audit podatke.
+
 ---
 
 ## Relacija firme i leada
@@ -103,9 +107,9 @@ Ne predstavlja ocenu kvaliteta sajta.
 | `inactive` | Sajt neaktivan | Poznat URL trenutno ne radi ili je nedostupan |
 | `error` | Greška pri proveri | Provera nije mogla pouzdano da se završi |
 
-Napomena: trenutno se status postavlja ručno. Buduća tehnička provera
-može predložiti ili automatski popuniti rezultat, ali ljudska provera
-ostaje moguća.
+Napomena: trenutno se status postavlja ručno. Tehnička provera može
+dopuniti audit zapis tehničkim rezultatima, ali ne menja automatski
+CRM `website_status`.
 
 ---
 
@@ -201,11 +205,32 @@ Pravila:
 1. Pri kreiranju CRM leada, `website_checked_at` se automatski postavlja.
 2. Kada se promeni `website_status`, datum se automatski ažurira.
 3. Ako se `website_status` ne menja, postojeći datum ostaje nepromenjen.
-4. Datum ne predstavlja tehničku proveru sajta; tehnička provera je
-   planirana kroz zasebnu tabelu `company_website_audits`.
+4. Datum ne predstavlja tehničku proveru sajta; tehnička provera se
+   čuva u zasebnoj tabeli `company_website_audits`.
 
 Na detalju firme prikazuje se oznaka **Poslednja provera sajta**. Ako
 datum ne postoji, prikazuje se **Još nije provereno**.
+
+---
+
+## Website audit
+
+Za CRM lead može se voditi istorija website audita.
+
+Relacija je:
+
+```text
+CompanyLead hasMany CompanyWebsiteAudit
+CompanyWebsiteAudit belongsTo CompanyLead
+```
+
+Audit se kreira ručno na detalju firme i može se pokrenuti tehnička
+provera URL-a. Tehnička provera čuva HTTP status, krajnji URL, HTTPS
+status, broj redirekcija, vreme odgovora, naslov stranice i meta
+description.
+
+Audit ne menja APR podatke ni CRM `website_status`. On predstavlja
+zasebnu istoriju provere sajta.
 
 ---
 
@@ -216,13 +241,11 @@ datum ne postoji, prikazuje se **Još nije provereno**.
 3. Dodati CRM lead ako ne postoji.
 4. Ručno uneti dostupne kontakt podatke i URL sajta.
 5. Postaviti status sajta i početni lead score.
-6. Kada počne pregled ili prikupljanje podataka, promeniti status u
-   `in_progress`.
+6. Kada počne pregled ili prikupljanje podataka, promeniti status u `in_progress`.
 7. Kada se ostvari prvi kontakt, promeniti status u `contacted`.
-8. Nakon procene prilike, postaviti `qualified`, `rejected` ili
-   `converted`.
-9. Koristiti `/leads` za pregled, filtere i prioritizaciju postojećih
-   leadova.
+8. Nakon procene prilike, postaviti `qualified`, `rejected` ili `converted`.
+9. Po potrebi dodati website audit i pokrenuti tehničku proveru URL-a.
+10. Koristiti `/leads` za pregled, filtere i prioritizaciju postojećih leadova.
 
 ---
 
@@ -236,7 +259,8 @@ datum ne postoji, prikazuje se **Još nije provereno**.
 - Nema istorije pojedinačnih komunikacija.
 - Nema automatskog slanja poruka.
 - Nema brisanja CRM leada iz interfejsa.
-- Nema istorije website audita; planirana je zasebna tabela `company_website_audits`.
+- Tehnička provera URL-a se pokreće ručno za pojedinačan audit.
+- Nema automatskog ili zakazanog ponavljanja tehničke provere.
 
 ---
 
@@ -245,11 +269,18 @@ datum ne postoji, prikazuje se **Još nije provereno**.
 CRM funkcionalnost je pokrivena feature testovima:
 
 - `tests/Feature/CompanyLeadFilterTest.php` — CRM filter na katalogu firmi.
-- `tests/Feature/CompanyLeadCrudTest.php` — kreiranje, ažuriranje,
-  validacija, 1:1 zapis i `CompanyLeadObserver`.
-- `tests/Feature/CompanyLeadUrlValidationTest.php` — URL validacija i
-  normalizacija protokola.
-- `tests/Feature/CompanyLeadWebsiteCheckedAtTest.php` — automatsko
-  `website_checked_at`.
+- `tests/Feature/CompanyLeadCrudTest.php` — kreiranje, ažuriranje, validacija, 1:1 zapis i `CompanyLeadObserver`.
+- `tests/Feature/CompanyLeadUrlValidationTest.php` — URL validacija i normalizacija protokola.
+- `tests/Feature/CompanyLeadWebsiteCheckedAtTest.php` — automatsko `website_checked_at`.
+
+Website audit funkcionalnost je dodatno pokrivena testovima za:
+
+- kreiranje audita za lead;
+- relaciju lead → audits;
+- više audita za isti lead;
+- cascade brisanje audita;
+- validaciju statusa audita;
+- ručno kreiranje audita kroz UI;
+- tehničku proveru URL-a.
 
 Testovi koriste SQLite bazu u memoriji i ne diraju lokalnu APR bazu.

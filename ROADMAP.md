@@ -32,6 +32,20 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 - [x] Paginacija
 - [x] Detalj firme
 
+### APR API sync
+
+- [x] APR Open Data API servis
+- [x] Artisan komanda `apr:sync`
+- [x] Lokalno čuvanje API snapshot-a
+- [x] Podrška API JSON formata u `apr:import`
+- [x] Upsert po matičnom broju firme
+- [x] Čuvanje datuma APR preseka
+- [x] Čuvanje datuma lokalnog uvoza
+- [x] Mali test uvoz sa `--write`
+- [x] Pun sync od 134.374 zapisa
+- [x] Verifikacija broja zapisa i datuma preseka
+- [x] Test suite prolazi
+
 ### CRM osnova
 
 - [x] Tabela `company_leads`
@@ -110,7 +124,7 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 - [ ] Dodati OpenStreetMap enrichment
 - [ ] Dodati Wikidata enrichment
 - [ ] Integrirati CompanyWall nakon potvrde uslova
-- [ ] Dodati APR Open Data API kao identitet izvor
+- [x] Dodati APR Open Data API kao identitet izvor
 - [ ] Definisati pravila auto-verifikacije
 - [ ] Dodati regionalne adaptere po zemljama
 
@@ -236,3 +250,7 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 - [ ] Batch obrada odabranih firmi
 - [ ] Konfigurabilni scoring model
 - [ ] Deployment iz lokalnog okruženja
+- [ ] Zakazani APR sync
+- [ ] Inkrementalni APR sync po promenama
+- [ ] Notifikacije o neuspehu APR sync-a
+- [ ] Strategija za firme koje nestanu iz novijeg APR preseka
