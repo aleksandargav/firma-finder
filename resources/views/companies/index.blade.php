@@ -64,7 +64,7 @@
 
         .filters {
             display: grid;
-            grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(160px, 1fr)) auto;
+            grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(160px, 1fr)) auto;
             gap: 12px;
             align-items: end;
             margin-bottom: 24px;
@@ -331,6 +331,23 @@
                             {{ $item }}
                         </option>
                     @endforeach
+                </select>
+            </label>
+
+            <label>
+                CRM stanje
+                <select name="lead_filter">
+                    <option value="all" @selected($filters['lead_filter'] === 'all')>
+                        Sve firme
+                    </option>
+
+                    <option value="with_lead" @selected($filters['lead_filter'] === 'with_lead')>
+                        Imaju lead
+                    </option>
+
+                    <option value="without_lead" @selected($filters['lead_filter'] === 'without_lead')>
+                        Nemaju lead
+                    </option>
                 </select>
             </label>
 

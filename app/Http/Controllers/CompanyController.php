@@ -19,6 +19,12 @@ class CompanyController extends Controller
         $activity = trim((string) $request->query('activity', ''));
         $status = trim((string) $request->query('status', 'Активан'));
 
+        $leadFilter = trim((string) $request->query('lead_filter', 'all'));
+
+        if (! in_array($leadFilter, ['all', 'with_lead', 'without_lead'], true)) {
+            $leadFilter = 'all';
+        }
+
         $companies = Company::query()
             ->with('lead')
             ->when(
@@ -48,6 +54,16 @@ class CompanyController extends Controller
                 $status !== 'all',
                 fn (Builder $query): Builder => $query->where('status', $status)
             )
+
+            ->when(
+                $leadFilter === 'with_lead',
+                fn (Builder $query): Builder => $query->has('lead')
+            )
+            ->when(
+                $leadFilter === 'without_lead',
+                fn (Builder $query): Builder => $query->doesntHave('lead')
+            )
+
             ->orderBy('business_name')
             ->paginate(50)
             ->withQueryString();
@@ -76,6 +92,7 @@ class CompanyController extends Controller
                 'municipality' => $municipality,
                 'activity' => $activity,
                 'status' => $status,
+                'lead_filter' => $leadFilter,
             ],
         ]);
     }
