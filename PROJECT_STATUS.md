@@ -38,20 +38,6 @@ Tabela `companies` čuva uvezene izvorne APR podatke:
 
 APR podaci se nikada ne menjaju CRM, enrichment ili audit podacima.
 
-APR JSON izvor koji se trenutno koristi ne sadrži website URL. Provereno je
-da svih 134.374 zapisa ima samo osnovna registarska polja.
-
-### APR sync
-
-APR podaci se preuzimaju kroz APR Open Data API u lokalni JSON snapshot.
-
-Snapshot se zatim uvozi u `companies` kroz `apr:import`, koristeći upsert
-po matičnom broju firme. Datum APR preseka čuva se u
-`source_snapshot_date`, a vreme lokalnog uvoza u `imported_at`.
-
-APR sync ne briše firme automatski i ne menja CRM, enrichment ili audit
-podatke.
-
 ### CRM podaci
 
 Tabela `company_leads` čuva ručne CRM podatke:
@@ -68,32 +54,6 @@ Tabela `company_leads` čuva ručne CRM podatke:
 
 Veza `Company → CompanyLead` je striktno 1:1 i zaštićena je
 jedinstvenim indeksom nad `company_leads.company_id`.
-
-### Company enrichment podaci
-
-Website i drugi kontakt podaci prikupljaju se kroz zaseban enrichment sloj.
-
-Planirana tabela je `company_data_points`.
-
-Svaki enrichment zapis ima:
-
-- izvor podataka;
-- identitet match;
-- licencni status;
-- confidence;
-- status potvrde.
-
-Planirani izvori su:
-
-- `manual`;
-- `companywall`;
-- `openstreetmap`;
-- `wikidata`;
-- `google_places`;
-- `apr` kao identitet izvor.
-
-CompanyWall se ne integriše dok ne budu pisano potvrđeni uslovi korišćenja,
-website podatak, MB/PIB uparivanje, kvote i licenca.
 
 ### Website audit podaci
 
@@ -112,6 +72,50 @@ sve povezane audite kroz `cascadeOnDelete`.
 
 APR podaci u `companies` se nikada ne menjaju audit podacima.
 
+### Company enrichment podaci
+
+Tabela `company_data_points` čuva dodatne podatke o firmama koji dolaze
+iz ručnog unosa ili budućih enrichment izvora.
+
+Veza je:
+
+```text
+Company hasMany CompanyDataPoint
+CompanyDataPoint belongsTo Company
+```
+
+`company_id` je nullable jer enrichment zapis može biti `unmatched`
+kada se ne može pouzdano povezati sa APR firmom.
+
+Brisanje APR firme briše i sve njene enrichment zapise kroz
+`cascadeOnDelete`.
+
+Podržani tipovi podataka su:
+
+- `website`;
+- `email`;
+- `phone`;
+- `address`.
+
+Podržani izvori su:
+
+- `manual`;
+- `companywall`;
+- `openstreetmap`;
+- `wikidata`;
+- `google_places`;
+- `apr`.
+
+Podržani statusi zapisa su:
+
+- `candidate`;
+- `verified`;
+- `rejected`;
+- `unmatched`;
+- `needs_review`.
+
+APR podaci se nikada ne menjaju enrichment podacima.
+
 ## Trenutno završeno
 
 ### APR katalog
@@ -127,26 +131,6 @@ APR podaci u `companies` se nikada ne menjaju audit podacima.
 - Lista koristi paginaciju od 50 firmi po stranici.
 - Detalj firme je dostupan na:
   `/companies/{registration_number}`.
-
-### APR API sync
-
-- Dodat je `AprApiService` za preuzimanje APR snapshot-a preko
-  APR Open Data API-ja.
-- Dodata je Artisan komanda `apr:sync`.
-- API snapshot se čuva lokalno u
-  `storage/app/apr/snapshots/{YYYYMMDD}/companies.json`.
-- `apr:import` je proširen da podržava APR API JSON format.
-- Import koristi upsert po matičnom broju firme.
-- APR sync ažurira samo izvorne APR podatke.
-- APR sync ne menja CRM, enrichment ili website audit podatke.
-- APR sync ne briše firme koje nisu prisutne u novom snapshot-u.
-- Lokalna baza je sinhronizovana sa APR presekom `2026-09-30`.
-- Ukupan broj firmi je 134.374.
-- Pun sync je uspešno obradio 134.374 zapisa bez preskočenih.
-- Svi zapisi imaju `source_snapshot_date = 2026-09-30`.
-- Mali test uvoz od 5 zapisa je potvrdio ispravno ažuriranje postojećih
-  zapisa bez dupliranja.
-- Kompletan test suite prolazi: 42 testa i 112 asercija.
 
 ### CRM
 
@@ -232,7 +216,7 @@ na primer iz `contacted` u `qualified`.
 - Dodat je `WebsiteAuditService` za ručno pokretanje tehničke provere sajta.
 - Tehnička provera čuva HTTP status, krajnji URL, HTTPS status, broj
   redirekcija, vreme odgovora, naslov stranice i meta description.
-- Ako sajt nije dostupan ili provera ne uspe, audit dobija status `failed`
+- Ako sajt nije dostupan ili provera uspe, audit dobija status `failed`
   i čuva se razlog greške.
 - Na detalju firme postoji dugme **Pokreni tehničku proveru** za svaki
   postojeći audit.
@@ -250,19 +234,40 @@ na primer iz `contacted` u `qualified`.
     - tehničku proveru kada URL nije definisan;
     - pokretanje tehničke provere kroz UI.
 
-### Company enrichment dokumentacija
+### Company enrichment
 
-- Proveren je APR JSON izvor `storage/app/apr-response.json`.
-- Potvrđeno je da svih 134.374 APR zapisa ima samo sedam registarskih polja.
-- Potvrđeno je da APR JSON ne sadrži website URL.
-- Kreiran je dokument `docs/company-enrichment.md`.
-- Definisana je arhitektura za više enrichment izvora.
-- Definisani su planirani izvori: `manual`, `companywall`, `openstreetmap`,
-  `wikidata`, `google_places` i `apr`.
-- Definisani su planirani statusi: `candidate`, `verified`, `rejected`,
+- Kreirana je tabela `company_data_points`.
+- Kreiran je `CompanyDataPoint` model.
+- Dodata je relacija `Company hasMany CompanyDataPoint`.
+- `company_id` je nullable i koristi `cascadeOnDelete`.
+- Podržani tipovi podataka su `website`, `email`, `phone` i `address`.
+- Podržani izvori su `manual`, `companywall`, `openstreetmap`, `wikidata`,
+  `google_places` i `apr`.
+- Podržani nivoi poverenja su `high`, `medium` i `low`.
+- Podržani licencni statusi su `allowed`, `restricted`, `forbidden`
+  i `unknown`.
+- Podržani statusi zapisa su `candidate`, `verified`, `rejected`,
   `unmatched` i `needs_review`.
-- Definisana je politika da CompanyWall ostaje neaktivan dok ne budu pisano
-  potvrđeni uslovi korišćenja.
+- Na detalju firme postoji sekcija **Enrichment kandidati**.
+- Korisnik može ručno da doda website, e-mail, telefon ili adresu
+  kao kandidata.
+- Website URL se normalizuje i validira pre čuvanja.
+- E-mail adresa se validira pre čuvanja.
+- Korisnik može ručno da potvrdi, odbije ili označi kandidata za pregled.
+- Potvrđeni website kandidat može se eksplicitno primeniti u CRM.
+- Primenom u CRM kreira se novi lead ako ne postoji ili se ažurira
+  postojeći lead.
+- Primenom u CRM menjaju se samo `website_url`, `website_status`
+  i `website_checked_at`.
+- `lead_status`, `lead_score`, telefon, e-mail i napomene se ne menjaju
+  automatski.
+- Za potvrđen website kandidat kod firme koja ima CRM lead može se
+  pokrenuti website audit.
+- Audit koristi postojeći `WebsiteAuditService` i čuva se u postojećoj
+  `company_website_audits` tabeli.
+- CompanyWall, OSM, Wikidata i Google Places još uvek nisu integrisani.
+- Nema automatske verifikacije identiteta firme niti automatske potvrde
+  URL-a.
 
 ## Trenutni testni zapisi
 
@@ -279,65 +284,60 @@ Postoji jedan ručni testni lead:
 Za ovaj lead postoje ručni testni website audit zapisi koji služe za
 proveru prikaza istorije audita, UI forme i tehničke provere sajta.
 
+Postoje i ručni enrichment testni zapisi:
+
+- `https://example.com` kao `verified` website kandidat;
+- `https://example.com` kao `candidate` website kandidat;
+- `https://example.org` kao `rejected` website kandidat.
+
 ## Aktivni fokus
 
-APR API sync je završen i verifikovan.
+Company enrichment temelj i ručni enrichment tok su završeni.
 
-Sledeći aktivni fokus je Company enrichment temelj: `company_data_points`,
-ručni unos i potvrda website kandidata, a zatim OSM, Wikidata i CompanyWall
-integracija nakon potvrde uslova.
+Sledeći korak je ručna potvrda website audit nalaza.
 
 ## Sledeći zadatak
 
-Kreirati `company_data_points` tabelu i `CompanyDataPoint` model.
+Dodati ručni review website audit nalaza:
 
-Prva verzija treba da podrži:
+- `review_status`;
+- `reviewed_at`;
+- `reviewed_by`;
+- ručne akcije za odobravanje, odbijanje i označavanje za pregled.
 
-- `Company hasMany CompanyDataPoint`;
-- `CompanyDataPoint belongsTo Company`;
-- `field = website`;
-- `source = manual`;
-- `status = candidate | verified | rejected | unmatched | needs_review`;
-- `confidence = high | medium | low`;
-- `data_license_status = allowed | restricted | forbidden | unknown`;
-- ručni unos i potvrdu website kandidata.
+Nakon toga sledi OSM enrichment za jednu firmu.
 
-Tek nakon toga dodaju se OSM, Wikidata i CompanyWall izvori.
+## Plan nakon enrichment review-a
 
-## Plan nakon enrichment temelja
-
-1. Dodati ručni unos i potvrdu website kandidata.
-2. Dodati OSM enrichment za jednu firmu.
-3. Dodati Wikidata enrichment kao dopunski izvor.
-4. Integrirati CompanyWall nakon potvrde uslova.
-5. Dodati pravila auto-verifikacije.
-6. Dodati regionalne adaptere po zemljama.
-7. Dodati Lighthouse rezultate za performance, accessibility,
-   best practices i SEO.
-8. Dodati desktop i mobilne screenshotove.
-9. Dodati lokalno skladištenje audit artefakata.
-10. Dodati AI analizu zasnovanu na tehničkim dokazima i snimcima.
-11. Dodati nacrt ponude uz obaveznu ručnu proveru i odobrenje.
-12. Tek nakon potvrđenog kvaliteta dodati queue, rate limiting i batch
+1. Dodati OSM enrichment za jednu firmu.
+2. Definisati pravila identiteta firme preko MB/PIB.
+3. Definisati scoring identitet match-a.
+4. Dodati Wikidata enrichment kao dopunski izvor.
+5. Integrirati CompanyWall tek nakon pismene potvrde uslova.
+6. Implementirati automatsku verifikaciju URL-a tek nakon pouzdanog
+   identiteta.
+7. Dodati Lighthouse rezultate i desktop/mobile screenshotove.
+8. Dodati AI analizu zasnovanu na tehničkim dokazima i snimcima.
+9. Dodati nacrt ponude uz obaveznu ručnu proveru i odobrenje.
+10. Tek nakon potvrđenog kvaliteta dodati queue, rate limiting i batch
     obradu.
 
 ## Trenutna ograničenja
 
 - URL, telefon i e-mail unose se ručno.
+- Enrichment kandidati se trenutno unose samo ručno.
 - Website audit se unosi ručno kroz formu na detalju firme.
 - Tehnička provera URL-a se pokreće ručno za pojedinačan audit.
-- `website_checked_at` se automatski postavlja pri kreiranju leada i promeni statusa sajta.
+- `website_checked_at` se automatski postavlja pri kreiranju leada i
+  promeni `website_status`.
 - Nema automatskog ili zakazanog ponavljanja tehničke provere.
 - Nema Lighthouse rezultata ni vizuelnog audita.
+- Nema integracije sa OSM, Wikidata, CompanyWall ili Google Places.
+- Nema automatske verifikacije identiteta firme.
+- Nema automatske potvrde enrichment URL-a.
+- Potvrđeni website se u CRM primenjuje samo eksplicitnom korisničkom
+  akcijom.
 - AI analiza, Lighthouse rezultati i screenshotovi nisu implementirani.
 - Nema AI API integracije.
 - Nema automatskog slanja poruka, e-mailova ili ponuda.
 - Nema autentikacije i više korisnika.
-- Nema `company_data_points` tabele ni enrichment servisa.
-- CompanyWall, OpenStreetMap i Wikidata enrichment nisu implementirani.
-- CompanyWall se ne koristi dok ne budu pisano potvrđeni uslovi korišćenja.
-- APR sync je ručna Artisan komanda.
-- Nema zakazanog automatskog APR sync-a.
-- Nema inkrementalnog APR sync-a po promenama.
-- Nema notifikacija o neuspehu APR sync-a.
-- Nema automatskog brisanja firmi koje nestanu iz novijeg APR preseka.

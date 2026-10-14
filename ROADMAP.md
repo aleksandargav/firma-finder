@@ -8,11 +8,10 @@ Razvoj ide postepeno:
 2. ručni CRM tok;
 3. testovi i zaštite;
 4. objektivni tehnički audit;
-5. company enrichment i potvrda website URL-a;
-6. vizuelni audit;
-7. AI analiza zasnovana na dokazima;
-8. nacrt ponude uz ručno odobrenje;
-9. tek zatim automatizacija većeg obima.
+5. vizuelni audit;
+6. AI analiza zasnovana na dokazima;
+7. nacrt ponude uz ručno odobrenje;
+8. tek zatim automatizacija većeg obima.
 
 AI nije zamena za proveru. Služi za ubrzanje procene, prioritizaciju i
 pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
@@ -31,20 +30,6 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 - [x] Filter po APR statusu
 - [x] Paginacija
 - [x] Detalj firme
-
-### APR API sync
-
-- [x] APR Open Data API servis
-- [x] Artisan komanda `apr:sync`
-- [x] Lokalno čuvanje API snapshot-a
-- [x] Podrška API JSON formata u `apr:import`
-- [x] Upsert po matičnom broju firme
-- [x] Čuvanje datuma APR preseka
-- [x] Čuvanje datuma lokalnog uvoza
-- [x] Mali test uvoz sa `--write`
-- [x] Pun sync od 134.374 zapisa
-- [x] Verifikacija broja zapisa i datuma preseka
-- [x] Test suite prolazi
 
 ### CRM osnova
 
@@ -98,48 +83,85 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 - [x] Čuvanje razloga greške kada provera ne uspe
 - [x] Feature testovi sa fake HTTP odgovorima
 
-### Company enrichment dokumentacija
+### Company enrichment temelj
 
-- [x] Proveriti APR JSON izvor
-- [x] Potvrditi da APR JSON ne sadrži website URL
-- [x] Dokumentovati enrichment arhitekturu
-- [x] Definisati plan za CompanyWall, OSM, Wikidata i buduće izvore
-
----
-
-## Sledeće: Company enrichment
-
-### Temelj
-
-- [ ] Kreirati `company_data_points` tabelu
-- [ ] Kreirati `CompanyDataPoint` model
-- [ ] Dodati relaciju `Company hasMany CompanyDataPoint`
-- [ ] Dodati relaciju `CompanyDataPoint belongsTo Company`
-- [ ] Dodati konstante za izvore, statusе, confidence i licencni status
-- [ ] Omogućiti ručni unos i potvrdu website kandidata
-- [ ] Prikazati enrichment kandidate na detalju firme
-
-### Izvori podataka
-
-- [ ] Dodati OpenStreetMap enrichment
-- [ ] Dodati Wikidata enrichment
-- [ ] Integrirati CompanyWall nakon potvrde uslova
-- [x] Dodati APR Open Data API kao identitet izvor
-- [ ] Definisati pravila auto-verifikacije
-- [ ] Dodati regionalne adaptere po zemljama
-
-### Pravila kvaliteta
-
-- [ ] Definisati `identity_match_score`
-- [ ] Definisati `data_license_status`
-- [ ] Definisati pravila za `candidate`, `verified`, `rejected`,
-  `unmatched` i `needs_review`
-- [ ] Omogućiti automatsku potvrdu samo za jaka poklapanja i dozvoljene izvore
-- [ ] Omogućiti ručni pregled sukobljenih kandidata
+- [x] Tabela `company_data_points`
+- [x] `CompanyDataPoint` model
+- [x] Relacija `Company hasMany CompanyDataPoint`
+- [x] Cascade brisanje enrichment zapisa pri brisanju firme
+- [x] Podrška za website, e-mail, telefon i adresu
+- [x] Konstante za izvore, confidence, licencni status i status zapisa
+- [x] Validaciona pravila za enrichment podatke
+- [x] Ručno dodavanje enrichment kandidata kroz UI
+- [x] Ručna potvrda, odbijanje i označavanje za pregled
+- [x] Eksplicitna primena potvrđenog website URL-a u CRM
+- [x] Pokretanje website audita iz potvrđenog website kandidata
+- [x] Feature testovi za model, relacije, validaciju, UI i audit tok
 
 ---
 
-## Sledeće: CRM završetak
+## Sledeće: Enrichment review
+
+### Ručni review audita
+
+- [ ] Dodati `review_status` na website audit
+- [ ] Dodati `reviewed_at` i `reviewed_by` na website audit
+- [ ] Omogućiti ručno odobravanje audita
+- [ ] Omogućiti ručno odbijanje audita
+- [ ] Omogućiti označavanje audita za pregled
+- [ ] Prikazati review status u website audit istoriji
+- [ ] Dodati testove za ručni review audita
+
+---
+
+## Sledeće: Automatizovani enrichment
+
+### Identitet firme
+
+- [ ] Definisati pravila identiteta firme preko MB/PIB
+- [ ] Definisati scoring identitet match-a
+- [ ] Podržati `unmatched` zapise kada MB/PIB ne postoje u APR bazi
+- [ ] Sprečiti automatsku potvrdu samo na osnovu naziva firme
+
+### OpenStreetMap
+
+- [ ] Integrirati OSM enrichment za jednu firmu
+- [ ] Pretraživati firmu po nazivu i opštini
+- [ ] Čuvati OSM kandidate u `company_data_points`
+- [] Označavati OSM zapise kao `candidate` ili `needs_review`
+- [ ] Čuvati izvorni URL i licencni status
+- [ ] Dodati testove sa fake OSM odgovorima
+
+### Wikidata
+
+- [ ] Integrirati Wikidata kao dopunski izvor
+- [ ] Koristiti property `P856 — official website`
+- [ ] Čuvati Wikidata kandidate u `company_data_points`
+- [ ] Označavati Wikidata zapise kao `candidate` ili `needs_review`
+- [ ] Dodati testove sa fake Wikidata odgovorima
+
+### CompanyWall
+
+- [ ] Dobiti pisanu potvrdu uslova korišćenja
+- [ ] Potvrditi da API ili izvoz sadrži website URL
+- [ ] Potvrditi način povezivanja preko MB/PIB
+- [ ] Potvrditi format JSON/CSV odgovora
+- [ ] Potvrditi cene, kvote i rate limite
+- [ ] Potvrditi uslove čuvanja podataka u CRM-u
+- [ ] Integrirati CompanyWall tek nakon potvrde uslova
+
+### Automatska verifikacija
+
+- [ ] Proveravati da li je potvrđeni URL dostupan
+- [ ] Proveravati HTTPS i konačni URL
+- [ ] Proveravati naziv firme u domenu, naslovu ili sadržaju
+- [ ] Detektovati sukobe između više izvora
+- [ ] Automatski verifikovati samo jaka poklapanja i dozvoljene izvore
+- [ ] Slabe ili sporne vrednosti slati u `needs_review`
+
+---
+
+## CRM završetak
 
 ### CRM katalog
 
@@ -230,13 +252,13 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 
 ## Ponude i kontakt
 
-- [ ] Nacrt personalizovane ponude zasnovan na odobrenim nalazima
+- [ ] Nacrt personalizovane ponude zasnovane na odobrenim nalazima
 - [ ] Izbor tona poruke
 - [ ] Ručna izmena nacrta
 - [ ] Ručno odobrenje pre bilo kakvog slanja
 - [ ] Istorija nacrta i odobrenja
 - [ ] Evidencija poslatog kontakta
-- [ ] Naknadna faza i integracija e-mail slanja, samo uz eksplicitnu potvrdu
+- [ ] Kasnija faza i integracija e-mail slanja, samo uz eksplicitnu potvrdu
 
 ---
 
@@ -250,7 +272,3 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 - [ ] Batch obrada odabranih firmi
 - [ ] Konfigurabilni scoring model
 - [ ] Deployment iz lokalnog okruženja
-- [ ] Zakazani APR sync
-- [ ] Inkrementalni APR sync po promenama
-- [ ] Notifikacije o neuspehu APR sync-a
-- [ ] Strategija za firme koje nestanu iz novijeg APR preseka

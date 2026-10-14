@@ -1,284 +1,155 @@
-# Firma Finder — Website Audits
+# Website audit
 
-## Svrha
+Website audit sloj čuva tehničke i ručne provere sajta firme. Odvojen je
+od APR podataka, CRM podataka i enrichment podataka.
 
-Website audit modul služi za proveru i procenu javno dostupnog sajta firme.
+## Model
 
-Cilj nije automatsko proglašavanje sajta dobrim ili lošim. Cilj je da se
-prikupe proverljivi tehnički i vizuelni dokazi koji pomažu da se utvrdi:
+Audit podaci se čuvaju u tabeli `company_website_audits`.
 
-- da li sajt postoji i da li se otvara;
-- da li radi preko HTTPS-a;
-- da li postoji problem sa brzinom, pristupačnošću, SEO osnovama ili
-  tehničkim praksama;
-- kako izgleda na desktopu i mobilnom prikazu;
-- da li postoje konkretne prilike za unapređenje;
-- da li je prikladnija manja izmena, unapređenje, redizajn ili novi sajt.
+Svaki audit pripada tačno jednom CRM leadu:
 
-Audit je pomoć za kvalifikaciju leada i pripremu ponude. Ne predstavlja
-automatsku konačnu stručnu ili poslovnu ocenu.
-
----
-
-## Osnovna pravila
-
-1. APR, CRM i audit podaci ostaju odvojeni.
-2. Jedan CRM lead može imati više audita kroz vreme.
-3. Svaki audit čuva datum, URL i rezultate tog konkretnog trenutka.
-4. Stari audit se ne prepisuje kada se pokrene nova provera.
-5. Tehnički rezultat, AI procena i ljudska potvrda čuvaju se odvojeno.
-6. AI ne sme automatski slati poruku, e-mail ili ponudu.
-7. Svaka eksterno poslata poruka mora biti ručno pregledana i odobrena.
-8. Sistem ne sme zaobilaziti CAPTCHA, login, rate limit, robots zaštite,
-   pristupne zabrane ili druge mere kontrole pristupa.
-9. Provere moraju biti ograničene po brzini i obimu.
-
-APR API sync može osvežiti izvorne APR podatke u tabeli `companies`, ali
-ne kreira, menja ili briše website audite.
-
----
-
-## Implementirani model podataka
-
-Tabela:
-
-```text
-company_website_audits
+```txt
+CompanyLead 1 — N CompanyWebsiteAudit
+CompanyWebsiteAudit N — 1 CompanyLead
 ```
 
-Relacija:
+Jedan CRM lead može imati više audit zapisa. To omogućava istoriju
+provera tokom vremena.
 
-```text
-CompanyLead hasMany CompanyWebsiteAudit
-CompanyWebsiteAudit belongsTo CompanyLead
-```
-
-Povezivanje preko `company_lead_id` je namerno: audit postoji samo za
-firmu koja je postala CRM lead i ima poznat ili predložen URL.
-
-Brisanje CRM leada briše i sve njegove website audite kroz
-`cascadeOnDelete`.
-
-Prva implementirana verzija koristi užu osnovnu šemu. Sadrži tehničke i
-ručne podatke o proveri sajta, bez AI, Lighthouse i screenshot polja.
-
-### Implementirana polja
-
-| Polje | Tip | Svrha |
-|---|---|---|
-| `id` | primarni ključ | Identifikator audita |
-| `company_lead_id` | foreign key | CRM lead kojem audit pripada |
-| `requested_url` | string, nullable | URL predat na proveru |
-| `final_url` | string, nullable | Krajnji URL nakon redirekcija |
-| `status` | string | Stanje audita |
-| `audit_version` | string | Verzija audit logike |
-| `http_status` | integer, nullable | HTTP status krajnjeg odgovora |
-| `is_reachable` | boolean, nullable | Da li je sajt dostupan |
-| `has_https` | boolean, nullable | Da li krajnji URL koristi HTTPS |
-| `redirect_count` | integer, nullable | Broj redirekcija |
-| `response_time_ms` | integer, nullable | Vreme odgovora |
-| `page_title` | string, nullable | Naslov stranice |
-| `meta_description` | text, nullable | Meta description stranice |
-| `notes` | text, nullable | Ručne napomene korisnika |
-| `reviewed_at` | timestamp, nullable | Datum ručne potvrde |
-| `started_at` | timestamp, nullable | Početak obrade |
-| `completed_at` | timestamp, nullable | Kraj obrade |
-| `error_message` | text, nullable | Razlog neuspeha |
-| `created_at` | timestamp | Datum kreiranja audita |
-| `updated_at` | timestamp | Datum poslednje izmene |
-
-Tabela ima indeks nad `company_lead_id` i `created_at`, što podržava
-prikaz istorije audita po leadu, od najnovijeg ka najstarijem.
-
-AI, Lighthouse, screenshot, konverzioni i odobrenja podaci biće dodati
-kasnije kroz zasebne migracije, kada bude definisana njihova stvarna
-struktura i izvor podataka.
-
----
+Brisanje CRM leada briše i sve povezane audit zapise.
 
 ## Statusi audita
 
-| Interna vrednost | Prikaz | Značenje |
-|---|---|---|
-| `pending` | Pending | Audit je kreiran, ali još nije završen |
-| `completed` | Completed | Audit je završen |
-| `failed` | Failed | Audit nije uspeo |
+| Status | Značenje |
+|---|---|
+| `pending` | Audit je kreiran, ali još nije završen |
+| `completed` | Audit je uspešno završen |
+| `failed` | Audit nije uspeo |
 
-Status se validira u `CompanyWebsiteAudit` modelu. Nepoznata vrednost
-se ne može sačuvati.
+## Polja
 
----
+| Polje | Namena |
+|---|---|
+| `company_lead_id` | CRM lead čiji se sajt proverava |
+| `status` | Status audita |
+| `requested_url` | URL koji je korisnik ili sistem zatražio |
+| `final_url` | Krajnji URL nakon redirekcija |
+| `http_status` | HTTP status kod |
+| `is_reachable` | Da li je sajt dostupan |
+| `uses_https` | Da li krajnji URL koristi HTTPS |
+| `redirect_count` | Broj redirekcija |
+| `response_time_ms` | Vreme odgovora u milisekundama |
+| `page_title` | Naslov stranice |
+| `meta_description` | Meta description stranice |
+| `notes` | Ručne napomene |
+| `error_message` | Razlog neuspeha |
+| `checked_at` | Datum i vreme provere |
+| `created_at` | Datum kreiranja audita |
+| `updated_at` | Datum poslednje izmene |
 
-## Ručni UI tok
+## Ručno kreiranje audita
 
-Trenutna verzija koristi ručni unos audita na detalju firme.
+Na detalju firme, u okviru CRM lead sekcije, korisnik može ručno kreirati
+novi website audit.
 
-```text
-1. Korisnik otvori detalj firme sa postojećim CRM leadom.
-2. Korisnik popuni formu „Dodaj website audit“.
-3. Sistem validira URL, status i tehničke podatke.
-4. Sistem kreira novi audit zapis.
-5. Novi audit se prikazuje na vrhu sekcije „Website audit istorija“.
-```
+Korisnik unosi:
 
-Ruta za kreiranje audita:
+- URL sajta;
+- opcionu napomenu.
 
-```text
-POST /companies/{registration_number}/website-audits
-```
+Novi audit se kreira sa statusom `pending`.
 
-Audit se može dodati samo firmi koja već ima CRM lead.
+## Ručna tehnička provera
 
----
+Za audit u statusu `pending` korisnik može pokrenuti tehničku proveru
+dugmetom **Pokreni tehničku proveru**.
 
-## Tehnička provera URL-a
+Provera se izvršava kroz `WebsiteAuditService`.
 
-Tehnička provera se pokreće ručno klikom na **Pokreni tehničku proveru**
-pored postojećeg audita.
+Tokom provere aplikacija čuva:
 
-Ruta:
+- da li je URL dostupan;
+- HTTP status kod;
+- krajnji URL nakon redirekcija;
+- da li krajnji URL koristi HTTPS;
+- broj redirekcija;
+- vreme odgovora;
+- naslov stranice;
+- meta description;
+- razlog greške, ako provera ne uspe.
 
-```text
-POST /website-audits/{audit}/run
-```
+Nakon uspešne provere, audit dobija status `completed`.
 
-Servis `App\Services\WebsiteAuditService`:
-
-1. postavlja audit u status `pending`;
-2. čuva `started_at`;
-3. šalje GET zahtev ka `requested_url`;
-4. čuva HTTP status i krajnji URL;
-5. proverava da li krajnji URL koristi HTTPS;
-6. čuva vreme odgovora u milisekundama;
-7. pokušava da izvuče naslov stranice i meta description;
-8. postavlja status `completed` kada je odgovor primljen;
-9. postavlja status `failed` i `error_message` kada sajt nije dostupan
-   ili dođe do greške.
-
-Trenutna provera ne koristi queue, batch obradu, Lighthouse, screenshotove
-ni AI analizu.
-
----
+Ako provera ne uspe, audit dobija status `failed`, a razlog se čuva u
+`error_message`.
 
 ## Prikaz istorije
 
-Na detalju firme, u sekciji **Website audit istorija**, prikazuju se:
+Na detalju firme prikazuje se lista prethodnih website audit zapisa.
 
-- redni broj audita;
+Za svaki audit prikazuju se:
+
+- datum provere;
 - status;
-- URL provere;
+- zatraženi URL;
 - krajnji URL;
 - HTTP status;
-- dostupnost;
 - HTTPS status;
+- broj redirekcija;
 - vreme odgovora;
-- datum audita;
-- audit verzija;
 - naslov stranice;
 - meta description;
-- ručne napomene;
-- greška, ako postoji.
+- napomene;
+- razlog greške, ako postoji.
 
-Auditi se prikazuju od najnovijeg ka najstarijem.
+## Audit iz enrichment kandidata
 
----
+Za potvrđeni website kandidat, kod firme koja već ima CRM lead, može se
+pokrenuti website audit.
 
-## Dokaz i tvrdnje
+Audit se kreira u postojećoj tabeli `company_website_audits`, a
+`requested_url` se uzima iz potvrđenog enrichment kandidata.
 
-Svaki nalaz treba razlikovati po vrsti:
+Audit se može pokrenuti samo ako:
 
-| Tip | Primer | Kako se koristi |
-|---|---|---|
-| Tehnička činjenica | `HTTP 404`, `HTTPS nije dostupan` | Može se navesti kao proverena činjenica |
-| Automatizovana metrika | Lighthouse SEO `42` | Navodi se sa kontekstom da je laboratorijska procena |
-| Vizuelno zapažanje | Tekst je sitan na mobilnom snimku | AI predlog, potvrđuje korisnik |
-| Poslovna preporuka | Dodati jači CTA | Predlog, ne predstavlja objektivnu činjenicu |
+- data point je tipa `website`;
+- data point ima status `verified`;
+- firma ima CRM lead.
 
-U ponudi se koriste samo odobreni nalazi i korektne formulacije, na primer:
+Pokretanje audita ne menja enrichment zapis niti CRM podatke.
 
-```text
-Na javno dostupnoj početnoj strani primetili smo da je navigacija na
-manjem ekranu teško čitljiva. Predlažemo prilagođavanje mobilnog menija
-i jasniji put do kontakt forme.
-```
+## Sledeći koraci
 
-Ne koristiti formulacije kao:
+Sledeća faza je ručni review audit rezultata.
 
-```text
-Vaš sajt je loš.
-Zbog sajta gubite klijente.
-Vaš SEO ne radi.
-```
+Planirana su sledeća stanja:
 
-osim ako postoji konkretan dokaz i korisnik ručno prilagodi poruku.
+| Status | Značenje |
+|---|---|
+| `unreviewed` | Audit još nije pregledan |
+| `approved` | Korisnik je potvrdio nalaz |
+| `rejected` | Korisnik je odbacio nalaz |
+| `needs_review` | Nalaz zahteva dodatnu proveru |
 
----
+Nakon toga slede:
 
-## Planirani tok rada
-
-```text
-1. Korisnik otvori detalj firme sa postojećim CRM leadom.
-2. Korisnik ručno popuni formu za website audit.
-3. Sistem kreira audit sa izabranim statusom, trenutno najčešće
-   `pending`, `completed` ili `failed`.
-4. Korisnik može da pokrene tehničku proveru za postojeći audit.
-5. Sistem ažurira audit sa tehničkim rezultatima.
-6. Kasnije: sistem pravi desktop i mobilni screenshot.
-7. Kasnije: sistem pokreće Lighthouse i čuva rezultate.
-8. Kasnije: AI analizira dokaze i vraća strukturisan rezultat.
-9. Kasnije: korisnik pregleda, potvrđuje ili odbacuje nalaze.
-10. Kasnije: tek nakon odobrenja može se generisati nacrt ponude.
-```
-
-U prvoj verziji audit se unosi ručno za jednu firmu. Batch obrada,
-queue i zakazani ponovni audit dolaze tek kada pojedinačni audit bude
-pouzdan.
-
----
-
-## Tehnološki plan
-
-| Sloj | Predlog | Uloga |
-|---|---|---|
-| Laravel | postojeća aplikacija | CRM, modeli, UI, audit istorija |
-| HTTP provera | Laravel HTTP client | Dostupnost, redirekcije i status |
-| Queue | Laravel job, kasnije | Pozadinski tok audita |
-| Browser automatizacija | Playwright, kasnije | Renderovanje i screenshotovi |
-| Tehnički audit | Lighthouse, kasnije | Performance, accessibility, SEO i best practices |
-| AI analiza | API izabran kasnije | Strukturisani nalazi iz dokaza |
-| Skladištenje | Laravel storage, kasnije | Screenshotovi i izveštaji |
-
-Pre implementacije Lighthouse-a i screenshotova treba proveriti lokalne
-Node.js, Chrome/Chromium i Lighthouse uslove, kao i način pokretanja
-Playwright procesa iz Laravel queue posla.
-
----
+- Lighthouse metrike;
+- desktop i mobilni screenshotovi;
+- ručna potvrda nalaza;
+- AI analiza zasnovana na potvrđenim rezultatima.
 
 ## Testovi
 
-Website audit funkcionalnost je pokrivena feature testovima:
+Pokriveni su sledeći slučajevi:
 
-- `tests/Feature/CompanyWebsiteAuditTest.php` — model, relacije,
-  više audita, cascade brisanje i validacija statusa.
-- `tests/Feature/CompanyWebsiteAuditUiTest.php` — ručno kreiranje
-  audita kroz UI, validacija URL-a i statusa, kao i sprečavanje
-  kreiranja audita bez CRM leada.
-- `tests/Feature/WebsiteAuditTechnicalCheckTest.php` — uspešna tehnička
-  provera, neuspeh kada sajt nije dostupan, nedostajući URL i pokretanje
-  provere kroz UI.
-
-Testovi koriste SQLite bazu u memoriji i ne diraju lokalnu APR bazu.
-
----
-
-## Van opsega trenutne verzije
-
-- AI analiza, Lighthouse rezultati i screenshotovi.
-- Automatsko ili zakazano pokretanje tehničke provere URL-a.
-- Masovno kreiranje audita za više firmi.
-- Masovno automatsko crawl-ovanje svih firmi.
-- Zaobilaženje CAPTCHA, autentikacije ili drugih zaštita.
-- Automatizovano slanje e-mailova i poruka.
-- Automatsko tvrđenje poslovne štete bez provere.
-- Potpuna zamena za stručni UX, SEO ili bezbednosni audit.
-- Procena svih unutrašnjih stranica sajta u jednom prolazu.
+- kreiranje `CompanyWebsiteAudit` zapisa;
+- relacija prema `CompanyLead`;
+- cascade brisanje audita pri brisanju leada;
+- validacija statusa audita;
+- ručno kreiranje audita kroz UI;
+- prikaz istorije audita;
+- ručna tehnička provera URL-a;
+- čuvanje HTTP statusa, HTTPS statusa, redirekcija, vremena odgovora,
+  naslova stranice i meta description-a;
+- čuvanje greške kada provera ne uspe.

@@ -98,7 +98,7 @@ On osvežava lokalni APR katalog, ali ne dodaje website ni kontakt podatke.
 
 | Izvor | Interna vrednost | Šta može da da | Status |
 |---|---|---|---|
-| Ručni unos | `manual` | Website, telefon, e-mail, napomene | Uvek dostupan |
+| Ručni unos | `manual` | Website, telefon, e-mail, napomene | Implementiran |
 | CompanyWall | `companywall` | Website, kontakti, MB/PIB | Čeka se potvrda uslova |
 | OpenStreetMap | `openstreetmap` | Website, telefon, e-mail, lokacija | Planiran |
 | Wikidata | `wikidata` | Zvanični sajt za poznate subjekte | Planiran |
@@ -142,20 +142,20 @@ lokalnih APR zapisa.
 
 ## Model podataka
 
-Planirana tabela:
+Tabela:
 
 ```text
 company_data_points
 ```
 
-Planirana relacija:
+Relacija:
 
 ```text
 Company hasMany CompanyDataPoint
 CompanyDataPoint belongsTo Company
 ```
 
-Planirana polja:
+Polja:
 
 | Polje | Tip | Svrha |
 |---|---|---|
@@ -163,14 +163,14 @@ Planirana polja:
 | `company_id` | foreign key, nullable | APR firma ako je match pronađen |
 | `external_identifier` | string, nullable | MB, PIB, Place ID ili drugi spoljni ID |
 | `identifier_type` | string, nullable | `registration_number`, `pib`, `place_id`, `name_address` |
-| `field` | string | `website`, `email`, `phone`, `address` i slično |
+| `field` | string | `website`, `email`, `phone`, `address` |
 | `value` | text | Nađena vrednost |
-| `source` | string | `manual`, `companywall`, `openstreetmap`, `wikidata`, `google_places` |
+| `source` | string | Izvor podatka |
 | `source_url` | string, nullable | URL izvora ili profila firme |
 | `confidence` | string | `high`, `medium`, `low` |
 | `identity_match_score` | integer | 0–100 |
-| `data_license_status` | string | `allowed`, `restricted`, `forbidden`, `unknown` |
-| `status` | string | `candidate`, `verified`, `rejected`, `unmatched`, `needs_review` |
+| `data_license_status` | string | Licencni status izvora |
+| `status` | string | Status potvrde zapisa |
 | `retrieved_at` | timestamp, nullable | Kada je podatak preuzet |
 | `verified_at` | timestamp, nullable | Kada je podatak potvrđen |
 | `verified_by` | string, nullable | `system` ili `user` |
@@ -178,7 +178,56 @@ Planirana polja:
 | `created_at` | timestamp | Datum kreiranja |
 | `updated_at` | timestamp | Datum poslednje izmene |
 
-Za prvu verziju, primarni fokus je `field = website`.
+`company_id` koristi `cascadeOnDelete`. Brisanje APR firme briše i njene
+enrichment zapise.
+
+---
+
+## Dozvoljene vrednosti
+
+### Tip podatka
+
+- `website`
+- `email`
+- `phone`
+- `address`
+
+### Izvor
+
+- `manual`
+- `companywall`
+- `openstreetmap`
+- `wikidata`
+- `google_places`
+- `apr`
+
+### Confidence
+
+- `high`
+- `medium`
+- `low`
+
+### Licencni status
+
+- `allowed`
+- `restricted`
+- `forbidden`
+- `unknown`
+
+### Status enrichment zapisa
+
+- `candidate`
+- `verified`
+- `rejected`
+- `unmatched`
+- `needs_review`
+
+### Tip identifikatora
+
+- `registration_number`
+- `pib`
+- `place_id`
+- `name_address`
 
 ---
 
@@ -221,6 +270,107 @@ Dok CompanyWall ne potvrdi uslove, njegov izvor ostaje `unknown` ili
 
 ---
 
+## Ručni enrichment tok
+
+Trenutno je implementiran ručni unos i pregled enrichment kandidata.
+
+```text
+Korisnik bira tip podatka
+→ unosi vrednost, confidence i licencni status
+→ sistem validira i normalizuje vrednost
+→ kreira se candidate
+→ korisnik potvrđuje, odbija ili označava za pregled
+```
+
+Podržani tipovi podataka su:
+
+- `website`;
+- `email`;
+- `phone`;
+- `address`.
+
+Website URL se normalizuje tako što mu se po potrebi dodaje `https://`.
+URL bez validnog domena se odbacuje.
+
+E-mail adresa se validira pre čuvanja.
+
+---
+
+## Primena potvrđenog website URL-a u CRM
+
+Potvrđeni website kandidat može se primeniti u CRM samo eksplicitnom
+korisničkom akcijom.
+
+```text
+Website data point
+→ status verified
+→ korisnik klikće „Primeni u CRM“
+→ company_leads.website_url se ažurira
+```
+
+Ako firma nema CRM lead, kreira se novi lead sa:
+
+- `website_url` = potvrđeni URL;
+- `website_status = active`;
+- `lead_status = new`;
+- `lead_score = 0`;
+- `website_checked_at = now()`.
+
+Ako firma već ima CRM lead, menjaju se samo:
+
+- `website_url`;
+- `website_status`;
+- `website_checked_at`.
+
+Ne menjaju se:
+
+- `lead_status`;
+- `lead_score`;
+- `phone`;
+- `email`;
+- `notes`.
+
+APR podaci se ne menjaju.
+
+---
+
+## Website audit iz enrichment kandidata
+
+Za potvrđeni website kandidat, kod firme koja već ima CRM lead, može se
+pokrenuti website audit.
+
+```text
+Verified website data point
+→ korisnik klikće „Pokreni website audit“
+→ kreira se CompanyWebsiteAudit
+→ WebsiteAuditService proverava URL
+→ rezultat se čuva u company_website_audits
+```
+
+Audit se može pokrenuti samo ako:
+
+- data point je tipa `website`;
+- data point ima status `verified`;
+- firma ima CRM lead.
+
+Audit koristi postojeći `WebsiteAuditService` i čuva:
+
+- URL provere;
+- krajnji URL;
+- HTTP status;
+- dostupnost;
+- HTTPS status;
+- broj redirekcija;
+- vreme odgovora;
+- naslov stranice;
+- meta description;
+- datum početka i završetka;
+- grešku, ako je bilo.
+
+Enrichment zapis se ne menja pokretanjem audita.
+
+---
+
 ## Automatska verifikacija
 
 Website URL može automatski da postane `verified` samo ako su ispunjeni
@@ -236,6 +386,8 @@ svi uslovi:
 
 Ako bilo koji uslov nedostaje, zapis ostaje `candidate` ili prelazi u
 `needs_review`.
+
+Automatska verifikacija trenutno nije implementirana.
 
 ---
 
@@ -359,14 +511,15 @@ normalizovani format podataka.
 
 ## Plan implementacije
 
-1. Kreirati `company_data_points` tabelu i `CompanyDataPoint` model.
-2. Dodati relaciju `Company hasMany CompanyDataPoint`.
-3. Dodati konstante za izvore, statusе, confidence i licencni status.
-4. Omogućiti ručni unos i potvrdu website kandidata.
-5. Dodati OSM enrichment za jednu firmu.
-6. Dodati Wikidata enrichment kao dopunski izvor.
-7. Integrirati CompanyWall nakon potvrde uslova.
-8. Dodati pravila auto-verifikacije.
-9. Dodati regionalne adaptere.
-10. Tek nakon pouzdanih potvrđenih URL-ova razvijati Lighthouse i
+1. [x] Kreirati `company_data_points` tabelu i `CompanyDataPoint` model.
+2. [x] Dodati relaciju `Company hasMany CompanyDataPoint`.
+3. [x] Dodati konstante za izvore, statusе, confidence i licencni status.
+4. [x] Omogućiti ručni unos i potvrdu website kandidata.
+5. [ ] Dodati ručni review website audit nalaza.
+6. [ ] Dodati OSM enrichment za jednu firmu.
+7. [ ] Dodati Wikidata enrichment kao dopunski izvor.
+8. [ ] Integrirati CompanyWall nakon potvrde uslova.
+9. [ ] Dodati pravila auto-verifikacije.
+10. [ ] Dodati regionalne adaptere.
+11. [ ] Tek nakon pouzdanih potvrđenih URL-ova razvijati Lighthouse i
     screenshot modul.

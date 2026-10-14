@@ -234,7 +234,7 @@ trenutno stanje sajta, a ne trenutak kreiranja CRM zapisa.
 APR JSON izvor ne sadrži website URL. Website i drugi kontakt podaci
 prikupljaju se kroz zaseban enrichment sloj.
 
-Enrichment podaci čuvaju se u planiranoj tabeli `company_data_points`.
+Enrichment podaci čuvaju se u tabeli `company_data_points`.
 
 Svaki zapis ima:
 
@@ -334,6 +334,48 @@ CRM karton, istorija rada ili audit podaci više nisu relevantni.
 - Eventualno označavanje neaktivnih ili uklonjenih firmi biće zasebna
   odluka i zasebna migracija.
 - CRM podaci se ne brišu kao posledica APR sync-a.
+
+---
+
+## 2026-10-14 — Potvrđeni enrichment URL se u CRM primenjuje ručno
+
+### Odluka
+
+Potvrđeni website kandidat iz `company_data_points` može se primeniti u CRM
+samo eksplicitnom korisničkom akcijom.
+
+### Razlog
+
+Enrichment izvor može da ponudi URL, ali ne može sam da odluči da li taj URL
+treba da zameni postojeći CRM podatak.
+
+### Posledica
+
+- Primenom se ažuriraju samo `website_url`, `website_status`
+  i `website_checked_at`.
+- `lead_status`, `lead_score`, telefon, e-mail i napomene se ne menjaju.
+- APR podaci se ne menjaju.
+- Enrichment zapis ostaje `verified`.
+
+---
+
+## 2026-10-14 — Website audit iz enrichment kandidata zahteva CRM lead
+
+### Odluka
+
+Website audit iz potvrđenog enrichment kandidata može se pokrenuti samo ako
+firma već ima CRM lead.
+
+### Razlog
+
+Audit pripada CRM leadu i postojećem toku provere sajta.
+
+### Posledica
+
+- Audit se kreira u postojećoj tabeli `company_website_audits`.
+- `requested_url` se uzima iz potvrđenog enrichment kandidata.
+- Enrichment zapis se ne menja pokretanjem audita.
+- Automatska verifikacija identiteta firme još uvek nije implementirana.
 
 ---
 
