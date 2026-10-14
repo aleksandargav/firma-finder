@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\WebsiteAuditService;
 use App\Models\Company;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -237,6 +238,17 @@ class CompanyController extends Controller
         return redirect()
             ->route('companies.show', $company)
             ->with('success', 'Website audit je uspešno dodat.');
+    }
+
+    public function runWebsiteAudit(
+        CompanyWebsiteAudit $audit,
+        WebsiteAuditService $auditService
+    ): RedirectResponse {
+        $auditService->check($audit);
+
+        return redirect()
+            ->route('companies.show', $audit->companyLead->company)
+            ->with('success', 'Tehnička provera sajta je završena.');
     }
 
     public function leadsIndex(Request $request): View

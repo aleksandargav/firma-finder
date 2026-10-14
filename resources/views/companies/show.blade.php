@@ -225,6 +225,27 @@
             margin-bottom: 14px;
         }
 
+        .audit-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .audit-run-button {
+            padding: 8px 14px;
+            color: #e9edf3;
+            background: #2a303b;
+            border: 1px solid #3a4352;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .audit-run-button:hover {
+            background: #343c49;
+        }
+
         .audit-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -686,9 +707,26 @@
                     <article class="audit-item">
                         <div class="audit-header">
                             <strong>Audit #{{ $audit->id }}</strong>
-                            <span class="badge audit-status-{{ $audit->status }}">
-                                {{ ucfirst($audit->status) }}
-                            </span>
+
+                            <div class="audit-header-actions">
+                                <span class="badge audit-status-{{ $audit->status }}">
+                                    {{ ucfirst($audit->status) }}
+                                </span>
+
+                                <form
+                                    method="POST"
+                                    action="{{ route('website-audits.run', $audit) }}"
+                                >
+                                    @csrf
+
+                                    <button
+                                        type="submit"
+                                        class="audit-run-button"
+                                    >
+                                        Pokreni tehničku proveru
+                                    </button>
+                                </form>
+                            </div>
                         </div>
 
                         <div class="audit-grid">
