@@ -227,6 +227,68 @@ trenutno stanje sajta, a ne trenutak kreiranja CRM zapisa.
 
 ---
 
+## 2026-10-14 — Website enrichment je odvojen od APR i CRM podataka
+
+### Odluka
+
+APR JSON izvor ne sadrži website URL. Website i drugi kontakt podaci
+prikupljaju se kroz zaseban enrichment sloj.
+
+Enrichment podaci čuvaju se u planiranoj tabeli `company_data_points`.
+
+Svaki zapis ima:
+
+- izvor podataka;
+- identitet match;
+- licencni status;
+- confidence;
+- status potvrde.
+
+### Razlog
+
+APR daje pouzdan identitet firme, ali ne website. CompanyWall, OSM,
+Wikidata i budući izvori mogu dati različite kandidate, pa je potrebno
+znati odakle podatak dolazi, da li je dozvoljen i da li je potvrđen.
+
+### Posledica
+
+- APR podaci se ne menjaju enrichment podacima.
+- CompanyWall, OSM, Wikidata i budući izvori koriste isti model.
+- Automatska potvrda je dozvoljena samo za jaka poklapanja i dozvoljene izvore.
+- Sporne vrednosti ostaju kandidati za ručni pregled.
+- Lighthouse i screenshotovi rade samo nad potvrđenim website URL-om.
+
+---
+
+## 2026-10-14 — CompanyWall se ne integriše bez pisane potvrde uslova
+
+### Odluka
+
+CompanyWall se ne koristi za automatsko prikupljanje podataka dok ne budu
+pisano potvrđeni:
+
+- da li njihov Web API ili izvoz sadrži website URL;
+- kako se firma povezuje preko MB/PIB;
+- format JSON/CSV odgovora;
+- cene, paketi, kvote i rate limiti;
+- uslovi čuvanja podataka u internom CRM-u;
+- uslovi i dozvola za scraping, ako se on koristi.
+
+### Razlog
+
+CompanyWall je komercijalna bonitetna platforma. Njihovi uslovi korišćenja
+zabranjuju automatizovano prikupljanje podataka bez saglasnosti.
+
+### Posledica
+
+- Ne pravi se sopstveni scraper bez pisane saglasnosti.
+- CompanyWall podaci, kada budu dostupni, ulaze kao `companywall` izvor.
+- Website URL se prvo čuva kao kandidat.
+- Automatska potvrda je moguća samo ako je licencni status dozvoljen i
+  MB/PIB se pouzdano poklapa sa APR firmom.
+
+---
+
 ## Pravilo za buduće izmene šeme
 
 Kada je Laravel migracija već izvršena, ne menja se postojeći migration

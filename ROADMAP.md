@@ -8,10 +8,11 @@ Razvoj ide postepeno:
 2. ručni CRM tok;
 3. testovi i zaštite;
 4. objektivni tehnički audit;
-5. vizuelni audit;
-6. AI analiza zasnovana na dokazima;
-7. nacrt ponude uz ručno odobrenje;
-8. tek zatim automatizacija većeg obima.
+5. company enrichment i potvrda website URL-a;
+6. vizuelni audit;
+7. AI analiza zasnovana na dokazima;
+8. nacrt ponude uz ručno odobrenje;
+9. tek zatim automatizacija većeg obima.
 
 AI nije zamena za proveru. Služi za ubrzanje procene, prioritizaciju i
 pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
@@ -82,6 +83,45 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 - [x] Izdvajanje meta description-a
 - [x] Čuvanje razloga greške kada provera ne uspe
 - [x] Feature testovi sa fake HTTP odgovorima
+
+### Company enrichment dokumentacija
+
+- [x] Proveriti APR JSON izvor
+- [x] Potvrditi da APR JSON ne sadrži website URL
+- [x] Dokumentovati enrichment arhitekturu
+- [x] Definisati plan za CompanyWall, OSM, Wikidata i buduće izvore
+
+---
+
+## Sledeće: Company enrichment
+
+### Temelj
+
+- [ ] Kreirati `company_data_points` tabelu
+- [ ] Kreirati `CompanyDataPoint` model
+- [ ] Dodati relaciju `Company hasMany CompanyDataPoint`
+- [ ] Dodati relaciju `CompanyDataPoint belongsTo Company`
+- [ ] Dodati konstante za izvore, statusе, confidence i licencni status
+- [ ] Omogućiti ručni unos i potvrdu website kandidata
+- [ ] Prikazati enrichment kandidate na detalju firme
+
+### Izvori podataka
+
+- [ ] Dodati OpenStreetMap enrichment
+- [ ] Dodati Wikidata enrichment
+- [ ] Integrirati CompanyWall nakon potvrde uslova
+- [ ] Dodati APR Open Data API kao identitet izvor
+- [ ] Definisati pravila auto-verifikacije
+- [ ] Dodati regionalne adaptere po zemljama
+
+### Pravila kvaliteta
+
+- [ ] Definisati `identity_match_score`
+- [ ] Definisati `data_license_status`
+- [ ] Definisati pravila za `candidate`, `verified`, `rejected`,
+  `unmatched` i `needs_review`
+- [ ] Omogućiti automatsku potvrdu samo za jaka poklapanja i dozvoljene izvore
+- [ ] Omogućiti ručni pregled sukobljenih kandidata
 
 ---
 

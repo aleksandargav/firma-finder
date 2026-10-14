@@ -36,7 +36,10 @@ Tabela `companies` čuva uvezene izvorne APR podatke:
 - datum APR preseka;
 - datum lokalnog uvoza.
 
-APR podaci se nikada ne menjaju CRM ili audit podacima.
+APR podaci se nikada ne menjaju CRM, enrichment ili audit podacima.
+
+APR JSON izvor koji se trenutno koristi ne sadrži website URL. Provereno je
+da svih 134.374 zapisa ima samo osnovna registarska polja.
 
 ### CRM podaci
 
@@ -54,6 +57,32 @@ Tabela `company_leads` čuva ručne CRM podatke:
 
 Veza `Company → CompanyLead` je striktno 1:1 i zaštićena je
 jedinstvenim indeksom nad `company_leads.company_id`.
+
+### Company enrichment podaci
+
+Website i drugi kontakt podaci prikupljaju se kroz zaseban enrichment sloj.
+
+Planirana tabela je `company_data_points`.
+
+Svaki enrichment zapis ima:
+
+- izvor podataka;
+- identitet match;
+- licencni status;
+- confidence;
+- status potvrde.
+
+Planirani izvori su:
+
+- `manual`;
+- `companywall`;
+- `openstreetmap`;
+- `wikidata`;
+- `google_places`;
+- `apr` kao identitet izvor.
+
+CompanyWall se ne integriše dok ne budu pisano potvrđeni uslovi korišćenja,
+website podatak, MB/PIB uparivanje, kvote i licenca.
 
 ### Website audit podaci
 
@@ -190,6 +219,20 @@ na primer iz `contacted` u `qualified`.
     - tehničku proveru kada URL nije definisan;
     - pokretanje tehničke provere kroz UI.
 
+### Company enrichment dokumentacija
+
+- Proveren je APR JSON izvor `storage/app/apr-response.json`.
+- Potvrđeno je da svih 134.374 APR zapisa ima samo sedam registarskih polja.
+- Potvrđeno je da APR JSON ne sadrži website URL.
+- Kreiran je dokument `docs/company-enrichment.md`.
+- Definisana je arhitektura za više enrichment izvora.
+- Definisani su planirani izvori: `manual`, `companywall`, `openstreetmap`,
+  `wikidata`, `google_places` i `apr`.
+- Definisani su planirani statusi: `candidate`, `verified`, `rejected`,
+  `unmatched` i `needs_review`.
+- Definisana je politika da CompanyWall ostaje neaktivan dok ne budu pisano
+  potvrđeni uslovi korišćenja.
+
 ## Trenutni testni zapisi
 
 Postoji jedan ručni testni lead:
@@ -208,31 +251,44 @@ proveru prikaza istorije audita, UI forme i tehničke provere sajta.
 ## Aktivni fokus
 
 Website audit osnova i ručna tehnička provera URL-a su završeni.
-Sledeći korak je proširenje audit modula Lighthouse rezultatima i
-desktop/mobile screenshotovima.
+
+Sledeći aktivni fokus je Company enrichment temelj: `company_data_points`,
+ručni unos i potvrda website kandidata, a zatim OSM, Wikidata i CompanyWall
+integracija nakon potvrde uslova.
 
 ## Sledeći zadatak
 
-Dodati Lighthouse rezultate i desktop/mobile screenshotove u website
-audit modul, uz zasebno skladištenje artefakata.
+Kreirati `company_data_points` tabelu i `CompanyDataPoint` model.
 
-Pre implementacije proveriti lokalne uslove:
+Prva verzija treba da podrži:
 
-- Node.js verziju;
-- Chrome ili Chromium instalaciju;
-- Lighthouse instalaciju;
-- način pokretanja Lighthouse-a iz Laravel aplikacije.
+- `Company hasMany CompanyDataPoint`;
+- `CompanyDataPoint belongsTo Company`;
+- `field = website`;
+- `source = manual`;
+- `status = candidate | verified | rejected | unmatched | needs_review`;
+- `confidence = high | medium | low`;
+- `data_license_status = allowed | restricted | forbidden | unknown`;
+- ručni unos i potvrdu website kandidata.
 
-## Plan nakon website audit osnove
+Tek nakon toga dodaju se OSM, Wikidata i CompanyWall izvori.
 
-1. Dodati Lighthouse rezultate za performance, accessibility,
+## Plan nakon enrichment temelja
+
+1. Dodati ručni unos i potvrdu website kandidata.
+2. Dodati OSM enrichment za jednu firmu.
+3. Dodati Wikidata enrichment kao dopunski izvor.
+4. Integrirati CompanyWall nakon potvrde uslova.
+5. Dodati pravila auto-verifikacije.
+6. Dodati regionalne adaptere po zemljama.
+7. Dodati Lighthouse rezultate za performance, accessibility,
    best practices i SEO.
-2. Dodati desktop i mobilne screenshotove.
-3. Dodati lokalno skladištenje audit artefakata.
-4. Dodati AI analizu zasnovanu na tehničkim dokazima i snimcima.
-5. Dodati nacrt ponude uz obaveznu ručnu proveru i odobrenje.
-6. Tek nakon potvrđenog kvaliteta dodati queue, rate limiting i batch
-   obradu.
+8. Dodati desktop i mobilne screenshotove.
+9. Dodati lokalno skladištenje audit artefakata.
+10. Dodati AI analizu zasnovanu na tehničkim dokazima i snimcima.
+11. Dodati nacrt ponude uz obaveznu ručnu proveru i odobrenje.
+12. Tek nakon potvrđenog kvaliteta dodati queue, rate limiting i batch
+    obradu.
 
 ## Trenutna ograničenja
 
@@ -247,3 +303,6 @@ Pre implementacije proveriti lokalne uslove:
 - Nema AI API integracije.
 - Nema automatskog slanja poruka, e-mailova ili ponuda.
 - Nema autentikacije i više korisnika.
+- Nema `company_data_points` tabele ni enrichment servisa.
+- CompanyWall, OpenStreetMap i Wikidata enrichment nisu implementirani.
+- CompanyWall se ne koristi dok ne budu pisano potvrđeni uslovi korišćenja.
