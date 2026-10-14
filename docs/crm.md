@@ -53,19 +53,37 @@ ista forma služi za ažuriranje tog zapisa.
 
 ---
 
+## CRM filter na katalogu firmi
+
+Na `/companies` postoji filter **CRM stanje**:
+
+| Vrednost | Prikaz | Značenje |
+|---|---|---|
+| `all` | Sve firme | Prikazuju se sve firme, sa i bez CRM leada |
+| `with_lead` | Imaju lead | Prikazuju se samo firme koje imaju CRM lead |
+| `without_lead` | Nemaju lead | Prikazuju se samo firme bez CRM leada |
+
+Neispravna vrednost `lead_filter` se tretira kao `all`.
+
+Filter radi zajedno sa pretragom, filterima po opštini, delatnosti i APR
+statusu, kao i sa paginacijom. Vrednost filtera ostaje sačuvana prilikom
+prelaska na sledeću stranicu.
+
+---
+
 ## Polja CRM leada
 
 | Polje | Opis | Pravilo |
 |---|---|---|
 | `company_id` | Veza sa firmom | Obavezno, jedinstveno |
-| `website_url` | Javna adresa sajta firme | Opciono, ručni unos |
+| `website_url` | Javna adresa sajta firme | Opciono; mora biti validan URL sa domenom; ako nema protokol, dodaje se `https://` |
 | `website_status` | Trenutno poznato stanje sajta | Obavezno |
 | `phone` | Telefon firme ili kontakt osobe | Opciono |
 | `email` | E-mail firme ili kontakt osobe | Opciono, validan e-mail format |
 | `lead_status` | Faza prodajnog procesa | Obavezno |
 | `lead_score` | Interni prioritet leada | Obavezno, ceo broj od 0 do 100 |
 | `notes` | Slobodne interne beleške | Opciono |
-| `website_checked_at` | Datum poslednje provere sajta | Postoji, još se ne postavlja kroz UI |
+| `website_checked_at` | Datum poslednje provere sajta | Automatski se postavlja pri kreiranju leada i svakoj promeni `website_status` |
 | `contacted_at` | Datum prvog kontakta | Postavlja observer |
 | `created_at` | Datum kreiranja CRM zapisa | Laravel automatski |
 | `updated_at` | Datum poslednje izmene CRM zapisa | Laravel automatski |
@@ -154,6 +172,43 @@ buduće poruke ili poziva treba da bude zasebna funkcionalnost.
 
 ---
 
+## Validacija i normalizacija URL-a
+
+`website_url` je opciono polje, ali kada je popunjeno mora biti validan
+URL sa validnim domenom.
+
+Pravila:
+
+- Prazan URL je dozvoljen.
+- `primer.rs` se snima kao `https://primer.rs`.
+- `www.primer.rs` se snima kao `https://www.primer.rs`.
+- `http://primer.rs` ostaje `http://primer.rs`.
+- `https://primer.rs` ostaje nepromenjen.
+- URL bez validnog domena, na primer `primer`, se odbacuje.
+- Maksimalna dužina URL-a je 500 karaktera.
+
+Normalizacija se vrši pre validacije u `CompanyController`.
+
+---
+
+## Datum poslednje provere sajta
+
+`website_checked_at` beleži kada je poslednji put promenjen ili potvrđen
+`website_status`.
+
+Pravila:
+
+1. Pri kreiranju CRM leada, `website_checked_at` se automatski postavlja.
+2. Kada se promeni `website_status`, datum se automatski ažurira.
+3. Ako se `website_status` ne menja, postojeći datum ostaje nepromenjen.
+4. Datum ne predstavlja tehničku proveru sajta; tehnička provera je
+   planirana kroz zasebnu tabelu `company_website_audits`.
+
+Na detalju firme prikazuje se oznaka **Poslednja provera sajta**. Ako
+datum ne postoji, prikazuje se **Još nije provereno**.
+
+---
+
 ## Trenutni radni tok
 
 1. Pronaći firmu na `/companies`.
@@ -173,7 +228,7 @@ buduće poruke ili poziva treba da bude zasebna funkcionalnost.
 
 ## Ograničenja trenutne verzije
 
-- Nema automatske provere URL-a, HTTP statusa ili HTTPS-a.
+- Nema automatske tehničke provere URL-a, HTTP statusa, redirekcija ili HTTPS-a.
 - Nema strukturisane procene mobilnog i desktop prikaza.
 - Nema Lighthouse rezultata.
 - Nema screenshotova.
@@ -181,3 +236,20 @@ buduće poruke ili poziva treba da bude zasebna funkcionalnost.
 - Nema istorije pojedinačnih komunikacija.
 - Nema automatskog slanja poruka.
 - Nema brisanja CRM leada iz interfejsa.
+- Nema istorije website audita; planirana je zasebna tabela `company_website_audits`.
+
+---
+
+## Testovi
+
+CRM funkcionalnost je pokrivena feature testovima:
+
+- `tests/Feature/CompanyLeadFilterTest.php` — CRM filter na katalogu firmi.
+- `tests/Feature/CompanyLeadCrudTest.php` — kreiranje, ažuriranje,
+  validacija, 1:1 zapis i `CompanyLeadObserver`.
+- `tests/Feature/CompanyLeadUrlValidationTest.php` — URL validacija i
+  normalizacija protokola.
+- `tests/Feature/CompanyLeadWebsiteCheckedAtTest.php` — automatsko
+  `website_checked_at`.
+
+Testovi koriste SQLite bazu u memoriji i ne diraju lokalnu APR bazu.

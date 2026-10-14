@@ -179,6 +179,54 @@ Tehnički audit + screenshotovi
 
 ---
 
+## 2026-10-14 — Website URL se validira i normalizuje
+
+### Odluka
+
+Korisnički unet website URL se validira pre čuvanja.
+
+Ako URL nema protokol, automatski se dodaje `https://`.
+
+Ako URL već ima `http://` ili `https://`, protokol ostaje nepromenjen.
+
+URL bez validnog domena se ne čuva.
+
+### Razlog
+
+Normalizacija sprečava nekonzistentne zapise poput `example.com`,
+`www.example.com` i `https://example.com` za isti sajt.
+
+Zadržavanje postojećeg protokola je važno jer neki sajtovi možda još uvek
+nisu dostupni preko HTTPS-a.
+
+### Posledica
+
+- URL se čuva u normalizovanom obliku.
+- Validacija proverava da li vrednost predstavlja validan URL.
+- Neispravan URL se odbacuje pre kreiranja ili ažuriranja leada.
+
+---
+
+## 2026-10-14 — Datum provere sajta se ažurira automatski
+
+### Odluka
+
+Polje `website_checked_at` automatski se postavlja kada se kreira lead
+ili kada se promeni `website_status`.
+
+### Razlog
+
+Datum provere predstavlja trenutak kada je korisnik potvrdio ili promenio
+trenutno stanje sajta, a ne trenutak kreiranja CRM zapisa.
+
+### Posledica
+
+- `website_checked_at` ne unosi korisnik ručno.
+- Datum se ažurira samo pri promeni statusa sajta.
+- Prikaz datuma poslednje provere daje kontekst za ručnu procenu sajta.
+
+---
+
 ## Pravilo za buduće izmene šeme
 
 Kada je Laravel migracija već izvršena, ne menja se postojeći migration

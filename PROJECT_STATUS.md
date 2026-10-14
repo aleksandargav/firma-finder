@@ -2,7 +2,7 @@
 
 ## Poslednje ažuriranje
 
-2026-10-11
+2026-10-14
 
 ## Svrha projekta
 
@@ -100,6 +100,20 @@ jedinstvenim indeksom nad `company_leads.company_id`.
   - sortiranje po score-u ili poslednjoj izmeni.
 - Glavni katalog na `/companies` prikazuje CRM kolonu.
 - CRM status vodi na detalj firme radi izmene.
+- CRM filter na katalogu firmi podržava:
+    - sve firme;
+    - samo firme sa leadom;
+    - samo firme bez leada.
+- Neispravna vrednost `lead_filter` se tretira kao `all`.
+- Website URL se validira i normalizuje:
+    - URL bez protokola dobija `https://`;
+    - postojeći `http://` ili `https://` protokol ostaje nepromenjen;
+    - URL bez validnog domena se odbacuje.
+- `website_checked_at` se automatski postavlja pri kreiranju leada i
+  promeni `website_status`.
+- Na CRM kartonu firme prikazuje se datum poslednje provere sajta.
+- Postoje feature testovi za CRM filter, CRUD, observer, URL validaciju
+  i `website_checked_at`.
 
 ### Datum prvog kontakta
 
@@ -125,37 +139,30 @@ Ovaj zapis služi za razvoj i proveru CRM ekrana.
 
 ## Aktivni fokus
 
-Završavanje CRM osnove, dokumentacije i testova pre razvoja
-website-audit i AI modula.
+Završavanje CRM dokumentacije i prelazak na razvoj website-audit modula.
 
 ## Sledeći zadatak
 
-Dodati CRM filter na katalog firmi `/companies`:
-
-- sve firme;
-- samo firme sa leadom;
-- samo firme bez leada.
-
-Filter mora raditi zajedno sa postojećim APR filterima, pretragom i
-paginacijom.
+Dizajnirati i implementirati zasebnu tabelu `company_website_audits`
+za istoriju website provera.
 
 ## Plan nakon CRM osnove
 
-1. Dodati testove za CRM kreiranje, izmenu, validaciju i observer.
-2. Dizajnirati zasebnu tabelu `company_website_audits`.
-3. Dodati ručni pregled i istoriju website audita po firmi.
-4. Dodati tehničku proveru URL-a, HTTP statusa, redirekcija i HTTPS-a.
-5. Dodati Lighthouse rezultat i desktop/mobile screenshotove.
-6. Dodati AI analizu zasnovanu na tehničkim dokazima i snimcima.
-7. Dodati nacrt ponude uz obaveznu ručnu proveru i odobrenje.
-8. Tek nakon potvrđenog kvaliteta dodati queue, rate limiting i batch obradu.
+1. Dizajnirati zasebnu tabelu `company_website_audits`.
+2. Dodati ručni pregled i istoriju website audita po firmi.
+3. Dodati tehničku proveru URL-a, HTTP statusa, redirekcija i HTTPS-a.
+4. Dodati Lighthouse rezultat i desktop/mobile screenshotove.
+5. Dodati AI analizu zasnovanu na tehničkim dokazima i snimcima.
+6. Dodati nacrt ponude uz obaveznu ručnu proveru i odobrenje.
+7. Tek nakon potvrđenog kvaliteta dodati queue, rate limiting i batch obradu.
 
 ## Trenutna ograničenja
 
 - URL, telefon i e-mail unose se ručno.
-- Provera da li sajt radi se za sada unosi ručno.
-- `website_checked_at` postoji u bazi, ali se još ne postavlja kroz UI.
-- Nema automatskog HTTP, Lighthouse ili vizuelnog audita.
+- Tehnička provera da li sajt radi još uvek se vrši ručno.
+- `website_checked_at` se automatski postavlja pri kreiranju leada i promeni statusa sajta.
+- Nema automatske tehničke provere HTTP statusa, redirekcija, HTTPS-a, Lighthouse rezultata ili vizuelnog audita.
+- Nema istorije website audita; planirana je zasebna tabela `company_website_audits`.
 - Nema AI API integracije.
 - Nema automatskog slanja poruka, e-mailova ili ponuda.
 - Nema autentikacije i više korisnika.

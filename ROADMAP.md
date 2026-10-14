@@ -47,6 +47,9 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 - [x] Sortiranje CRM liste
 - [x] CRM status u katalogu firmi
 - [x] Dokumentacija početnog stanja
+- [x] CRM filter na katalogu firmi
+- [x] Validacija i normalizacija website URL-a
+- [x] Automatski datum poslednje provere sajta
 
 ---
 
@@ -54,27 +57,29 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 
 ### CRM katalog
 
-- [ ] Filter: sve firme / samo firme sa leadom / samo firme bez leada
+- [x] Filter: sve firme / samo firme sa leadom / samo firme bez leada
 - [ ] Opcioni filter prema konkretnom CRM statusu direktno na katalogu
 - [ ] Jasniji vizuelni statusi za različite faze leada
 - [ ] Prikaz ili filter po lead score-u
 
 ### Validacija i UX
 
-- [ ] Validirati URL sajta kao stvarni URL, uz normalizaciju protokola
-- [ ] Automatski postaviti `website_checked_at` pri ručnoj promeni statusa sajta
-- [ ] Uvesti jasniju oznaku da li je URL proveravan i kada
+- [x] Validirati URL sajta kao stvarni URL, uz normalizaciju protokola
+- [x] Automatski postaviti `website_checked_at` pri ručnoj promeni statusa sajta
+- [x] Uvesti jasniju oznaku da li je URL proveravan i kada
 - [ ] Omogućiti bezbedno brisanje CRM leada uz potvrdu, ako se pokaže potrebno
 
 ### Testovi
 
-- [ ] Feature test za kreiranje leada
-- [ ] Feature test za ažuriranje leada
-- [ ] Test validacije statusa i lead score-a
-- [ ] Test 1:1 ograničenja nad `company_id`
-- [ ] Test `CompanyLeadObserver` ponašanja za `contacted_at`
+- [x] Feature test za kreiranje leada
+- [x] Feature test za ažuriranje leada
+- [x] Test validacije statusa i lead score-a
+- [x] Test 1:1 ograničenja nad `company_id`
+- [x] Test `CompanyLeadObserver` ponašanja za `contacted_at`
 - [ ] Test filtera CRM liste
-- [ ] Test filtera CRM stanja na katalogu
+- [x] Test filtera CRM stanja na katalogu
+- [x] Testovi za URL validaciju i normalizaciju
+- [x] Testovi za automatsko `website_checked_at`
 
 ---
 
