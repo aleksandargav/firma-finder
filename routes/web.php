@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\CompanyDataPointController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -27,3 +28,12 @@ Route::post('/companies/{company:registration_number}/website-audits', [CompanyC
 
 Route::post('/website-audits/{audit}/run', [CompanyController::class, 'runWebsiteAudit'])
     ->name('website-audits.run');
+
+Route::post('/companies/{company:registration_number}/data-points', [CompanyDataPointController::class, 'store'])
+    ->name('companies.data-points.store');
+
+Route::post('/data-points/{dataPoint}/verify', [CompanyDataPointController::class, 'verify'])
+    ->name('data-points.verify');
+
+Route::post('/data-points/{dataPoint}/reject', [CompanyDataPointController::class, 'reject'])
+    ->name('data-points.reject');

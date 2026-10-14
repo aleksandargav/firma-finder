@@ -517,6 +517,9 @@
             </div>
         </form>
     </section>
+
+    @include('companies.partials.company-data-points')
+
     @if ($company->lead)
         <section class="card audits">
             <h2>Website audit istorija</h2>
