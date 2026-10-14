@@ -9,6 +9,7 @@ use JsonException;
 class ImportAprCompanies extends Command
 {
     protected $signature = 'apr:import
+        {--file=storage/app/apr-response.json : Putanja do APR JSON snapshot-a}
         {--limit=5 : Maksimalan broj zapisa za obradu}
         {--batch=500 : Broj zapisa po SQL upsert batch-u}
         {--write : Upisi podatke u bazu; bez ove opcije radi se samo dry-run}';
@@ -17,7 +18,10 @@ class ImportAprCompanies extends Command
 
     public function handle(): int
     {
-        $path = storage_path('app/apr-response.json');
+        $file = $this->option('file');
+        $path = str_starts_with($file, '/')
+            ? $file
+            : base_path($file);
 
         if (!is_file($path) || !is_readable($path)) {
             $this->error("APR JSON fajl nije pronađen ili nije čitljiv: {$path}");
