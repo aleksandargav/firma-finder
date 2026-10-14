@@ -4,7 +4,7 @@ use App\Http\Controllers\CompanyController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('companies.index');
 });
 
 Route::get('/companies', [CompanyController::class, 'index'])
