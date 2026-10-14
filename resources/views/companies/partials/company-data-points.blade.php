@@ -1,5 +1,5 @@
 <section class="card audits">
-    <h2>Website kandidati</h2>
+    <h2>Enrichment kandidati</h2>
 
     <form
         method="POST"
@@ -8,11 +8,29 @@
     >
         @csrf
 
-        <h3>Dodaj website kandidat</h3>
+        <h3>Dodaj enrichment kandidata</h3>
 
         <div class="form-grid">
-            <div class="field full">
-                <label for="data_point_value">Website URL</label>
+            <div class="field">
+                <label for="data_point_field">Tip podatka</label>
+                <select id="data_point_field" name="field">
+                    @foreach (App\Models\CompanyDataPoint::fields() as $field)
+                        <option
+                            value="{{ $field }}"
+                            @selected(old('field') === $field)
+                        >
+                            {{ ucfirst($field) }}
+                        </option>
+                    @endforeach
+                </select>
+
+                @error('field')
+                <span class="error-text">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="field">
+                <label for="data_point_value">Vrednost</label>
                 <input
                     id="data_point_value"
                     name="value"
@@ -22,7 +40,43 @@
                 >
 
                 @error('value')
-                    <span class="error-text">{{ $message }}</span>
+                <span class="error-text">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="field">
+                <label for="data_point_confidence">Confidence</label>
+                <select id="data_point_confidence" name="confidence">
+                    @foreach (App\Models\CompanyDataPoint::confidences() as $confidence)
+                        <option
+                            value="{{ $confidence }}"
+                            @selected(old('confidence', App\Models\CompanyDataPoint::CONFIDENCE_MEDIUM) === $confidence)
+                        >
+                            {{ ucfirst($confidence) }}
+                        </option>
+                    @endforeach
+                </select>
+
+                @error('confidence')
+                <span class="error-text">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="field">
+                <label for="data_point_license">Licencni status</label>
+                <select id="data_point_license" name="data_license_status">
+                    @foreach (App\Models\CompanyDataPoint::licenseStatuses() as $licenseStatus)
+                        <option
+                            value="{{ $licenseStatus }}"
+                            @selected(old('data_license_status', App\Models\CompanyDataPoint::LICENSE_ALLOWED) === $licenseStatus)
+                        >
+                            {{ ucfirst($licenseStatus) }}
+                        </option>
+                    @endforeach
+                </select>
+
+                @error('data_license_status')
+                <span class="error-text">{{ $message }}</span>
                 @enderror
             </div>
 
@@ -34,7 +88,7 @@
                 >{{ old('notes') }}</textarea>
 
                 @error('notes')
-                    <span class="error-text">{{ $message }}</span>
+                <span class="error-text">{{ $message }}</span>
                 @enderror
             </div>
         </div>
@@ -46,13 +100,16 @@
 
     @if ($company->dataPoints->isEmpty())
         <div class="lead-summary muted">
-            Za ovu firmu još nema sačuvanih website kandidata.
+            Za ovu firmu još nema sačuvanih enrichment kandidata.
         </div>
     @else
         @foreach ($company->dataPoints as $dataPoint)
             <article class="audit-item">
                 <div class="audit-header">
-                    <strong>{{ $dataPoint->value }}</strong>
+                    <strong>
+                        {{ ucfirst($dataPoint->field) }}:
+                        {{ $dataPoint->value }}
+                    </strong>
 
                     <div class="audit-header-actions">
                         <span class="badge">
@@ -73,6 +130,17 @@
 
                             <form
                                 method="POST"
+                                action="{{ route('data-points.needs-review', $dataPoint) }}"
+                            >
+                                @csrf
+
+                                <button type="submit" class="audit-run-button">
+                                    Za pregled
+                                </button>
+                            </form>
+
+                            <form
+                                method="POST"
                                 action="{{ route('data-points.reject', $dataPoint) }}"
                             >
                                 @csrf
@@ -88,6 +156,7 @@
                 <div class="audit-details">
                     <p><strong>Izvor:</strong> {{ ucfirst($dataPoint->source) }}</p>
                     <p><strong>Confidence:</strong> {{ ucfirst($dataPoint->confidence) }}</p>
+                    <p><strong>Licenca:</strong> {{ ucfirst($dataPoint->data_license_status) }}</p>
                     <p><strong>Dodat:</strong> {{ $dataPoint->created_at?->format('d.m.Y. H:i') }}</p>
 
                     @if ($dataPoint->verified_at)

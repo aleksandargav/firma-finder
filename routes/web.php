@@ -37,3 +37,6 @@ Route::post('/data-points/{dataPoint}/verify', [CompanyDataPointController::clas
 
 Route::post('/data-points/{dataPoint}/reject', [CompanyDataPointController::class, 'reject'])
     ->name('data-points.reject');
+
+Route::post('/data-points/{dataPoint}/needs-review', [CompanyDataPointController::class, 'needsReview'])
+    ->name('data-points.needs-review');

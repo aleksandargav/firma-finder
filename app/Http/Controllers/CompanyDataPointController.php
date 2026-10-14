@@ -6,41 +6,49 @@ use App\Models\Company;
 use App\Models\CompanyDataPoint;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class CompanyDataPointController extends Controller
 {
     public function store(Request $request, Company $company): RedirectResponse
     {
-        $request->merge([
-            'value' => $this->normalizeWebsiteUrl(
-                $request->input('value')
-            ),
-        ]);
-
         $validated = $request->validate([
-            'value' => [
+            'field' => [
                 'required',
-                'url',
-                'max:500',
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    $host = parse_url((string) $value, PHP_URL_HOST);
-
-                    if ($host === false || $host === null || ! str_contains($host, '.')) {
-                        $fail('Website URL mora sadržati validan domen, na primer primer.rs.');
-                    }
-                },
+                'string',
+                Rule::in(CompanyDataPoint::fields()),
+            ],
+            'value' => ['required', 'string', 'max:500'],
+            'confidence' => [
+                'required',
+                'string',
+                Rule::in(CompanyDataPoint::confidences()),
+            ],
+            'data_license_status' => [
+                'required',
+                'string',
+                Rule::in(CompanyDataPoint::licenseStatuses()),
             ],
             'notes' => ['nullable', 'string', 'max:5000'],
         ]);
 
+        $value = $this->normalizeValue($validated['field'], $validated['value']);
+
+        if ($value === null) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'value' => 'Uneta vrednost nije validna za izabrani tip podatka.',
+                ]);
+        }
+
         $company->dataPoints()->create([
-            'field' => CompanyDataPoint::FIELD_WEBSITE,
-            'value' => $validated['value'],
+            'field' => $validated['field'],
+            'value' => $value,
             'source' => CompanyDataPoint::SOURCE_MANUAL,
-            'confidence' => CompanyDataPoint::CONFIDENCE_MEDIUM,
-            'identity_match_score' => 0,
-            'data_license_status' => CompanyDataPoint::LICENSE_ALLOWED,
+            'confidence' => $validated['confidence'],
+            'identity_match_score' => 100,
+            'data_license_status' => $validated['data_license_status'],
             'status' => CompanyDataPoint::STATUS_CANDIDATE,
             'retrieved_at' => now(),
             'notes' => $validated['notes'] ?? null,
@@ -48,17 +56,11 @@ class CompanyDataPointController extends Controller
 
         return redirect()
             ->route('companies.show', $company)
-            ->with('success', 'Website kandidat je uspešno dodat.');
+            ->with('success', 'Enrichment kandidat je uspešno dodat.');
     }
 
     public function verify(CompanyDataPoint $dataPoint): RedirectResponse
     {
-        if ($dataPoint->field !== CompanyDataPoint::FIELD_WEBSITE) {
-            return redirect()
-                ->route('companies.show', $dataPoint->company)
-                ->with('error', 'Može se potvrditi samo website kandidat.');
-        }
-
         if ($dataPoint->source !== CompanyDataPoint::SOURCE_MANUAL) {
             return redirect()
                 ->route('companies.show', $dataPoint->company)
@@ -73,17 +75,11 @@ class CompanyDataPointController extends Controller
 
         return redirect()
             ->route('companies.show', $dataPoint->company)
-            ->with('success', 'Website kandidat je potvrđen.');
+            ->with('success', 'Enrichment kandidat je potvrđen.');
     }
 
     public function reject(CompanyDataPoint $dataPoint): RedirectResponse
     {
-        if ($dataPoint->field !== CompanyDataPoint::FIELD_WEBSITE) {
-            return redirect()
-                ->route('companies.show', $dataPoint->company)
-                ->with('error', 'Može se odbaciti samo website kandidat.');
-        }
-
         $dataPoint->update([
             'status' => CompanyDataPoint::STATUS_REJECTED,
             'verified_at' => null,
@@ -92,21 +88,52 @@ class CompanyDataPointController extends Controller
 
         return redirect()
             ->route('companies.show', $dataPoint->company)
-            ->with('success', 'Website kandidat je odbijen.');
+            ->with('success', 'Enrichment kandidat je odbijen.');
     }
 
-    private function normalizeWebsiteUrl(?string $websiteUrl): ?string
+    public function needsReview(CompanyDataPoint $dataPoint): RedirectResponse
     {
-        $websiteUrl = trim((string) $websiteUrl);
+        $dataPoint->update([
+            'status' => CompanyDataPoint::STATUS_NEEDS_REVIEW,
+            'verified_at' => null,
+            'verified_by' => null,
+        ]);
 
-        if ($websiteUrl === '') {
-            return null;
-        }
+        return redirect()
+            ->route('companies.show', $dataPoint->company)
+            ->with('success', 'Enrichment kandidat je označen za pregled.');
+    }
 
+    private function normalizeValue(string $field, string $value): ?string
+    {
+        $value = trim($value);
+
+        return match ($field) {
+            CompanyDataPoint::FIELD_WEBSITE => $this->normalizeWebsiteUrl($value),
+            CompanyDataPoint::FIELD_EMAIL => $this->normalizeEmail($value),
+            CompanyDataPoint::FIELD_PHONE,
+            CompanyDataPoint::FIELD_ADDRESS => $value !== '' ? $value : null,
+            default => null,
+        };
+    }
+
+    private function normalizeWebsiteUrl(string $websiteUrl): ?string
+    {
         if (! preg_match('#^https?://#i', $websiteUrl)) {
             $websiteUrl = 'https://' . $websiteUrl;
         }
 
+        $host = parse_url($websiteUrl, PHP_URL_HOST);
+
+        if ($host === false || $host === null || ! str_contains($host, '.')) {
+            return null;
+        }
+
         return $websiteUrl;
+    }
+
+    private function normalizeEmail(string $email): ?string
+    {
+        return filter_var($email, FILTER_VALIDATE_EMAIL) ?: null;
     }
 }
