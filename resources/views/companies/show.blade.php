@@ -205,6 +205,64 @@
             border-radius: 10px;
         }
 
+        .audits {
+            margin-top: 28px;
+        }
+
+        .audit-item {
+            margin-bottom: 18px;
+            padding: 18px;
+            background: #111318;
+            border: 1px solid #2a303b;
+            border-radius: 10px;
+        }
+
+        .audit-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .audit-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .audit-details {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid #2a303b;
+        }
+
+        .audit-details p {
+            margin: 0 0 8px;
+            line-height: 1.5;
+        }
+
+        .audit-status-pending {
+            background: #3a3113;
+            color: #ffe08a;
+        }
+
+        .audit-status-completed {
+            background: #143b22;
+            color: #b9f5c9;
+        }
+
+        .audit-status-failed {
+            background: #41181c;
+            color: #ffd3d3;
+        }
+
+        @media (max-width: 720px) {
+            .audit-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 720px) {
             .grid,
             .form-grid {
@@ -438,6 +496,273 @@
             </div>
         </form>
     </section>
+    @if ($company->lead)
+        <section class="card audits">
+            <h2>Website audit istorija</h2>
+
+            <form
+                method="POST"
+                action="{{ route('companies.website-audits.store', $company) }}"
+                class="audit-form"
+            >
+                @csrf
+
+                <h3>Dodaj website audit</h3>
+
+                <div class="form-grid">
+                    <div class="field full">
+                        <label for="requested_url">URL provere</label>
+                        <input
+                            id="requested_url"
+                            name="requested_url"
+                            type="url"
+                            value="{{ old('requested_url', $company->lead->website_url) }}"
+                            placeholder="https://primer.rs"
+                        >
+                        @error('requested_url')
+                        <span class="error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field full">
+                        <label for="final_url">Krajnji URL</label>
+                        <input
+                            id="final_url"
+                            name="final_url"
+                            type="url"
+                            value="{{ old('final_url') }}"
+                            placeholder="https://www.primer.rs/"
+                        >
+                        @error('final_url')
+                        <span class="error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field">
+                        <label for="audit_status">Status audita</label>
+                        <select id="audit_status" name="status">
+                            @foreach (App\Models\CompanyWebsiteAudit::STATUSES as $status)
+                                <option
+                                    value="{{ $status }}"
+                                    @selected(old('status', App\Models\CompanyWebsiteAudit::STATUS_PENDING) === $status)
+                                >
+                                    {{ ucfirst($status) }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('status')
+                        <span class="error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field">
+                        <label for="http_status">HTTP status</label>
+                        <input
+                            id="http_status"
+                            name="http_status"
+                            type="number"
+                            min="100"
+                            max="599"
+                            value="{{ old('http_status') }}"
+                            placeholder="200"
+                        >
+                        @error('http_status')
+                        <span class="error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field">
+                        <label for="is_reachable">Da li sajt radi?</label>
+                        <select id="is_reachable" name="is_reachable">
+                            <option value="">Nepoznato</option>
+                            <option value="1" @selected(old('is_reachable') === '1')>Da</option>
+                            <option value="0" @selected(old('is_reachable') === '0')>Ne</option>
+                        </select>
+                        @error('is_reachable')
+                        <span class="error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field">
+                        <label for="has_https">HTTPS</label>
+                        <select id="has_https" name="has_https">
+                            <option value="">Nepoznato</option>
+                            <option value="1" @selected(old('has_https') === '1')>Da</option>
+                            <option value="0" @selected(old('has_https') === '0')>Ne</option>
+                        </select>
+                        @error('has_https')
+                        <span class="error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field">
+                        <label for="redirect_count">Broj redirekcija</label>
+                        <input
+                            id="redirect_count"
+                            name="redirect_count"
+                            type="number"
+                            min="0"
+                            max="100"
+                            value="{{ old('redirect_count') }}"
+                        >
+                        @error('redirect_count')
+                        <span class="error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field">
+                        <label for="response_time_ms">Vreme odgovora (ms)</label>
+                        <input
+                            id="response_time_ms"
+                            name="response_time_ms"
+                            type="number"
+                            min="0"
+                            max="600000"
+                            value="{{ old('response_time_ms') }}"
+                        >
+                        @error('response_time_ms')
+                        <span class="error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field full">
+                        <label for="audit_page_title">Naslov stranice</label>
+                        <input
+                            id="audit_page_title"
+                            name="page_title"
+                            type="text"
+                            value="{{ old('page_title') }}"
+                        >
+                        @error('page_title')
+                        <span class="error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field full">
+                        <label for="audit_meta_description">Meta description</label>
+                        <textarea
+                            id="audit_meta_description"
+                            name="meta_description"
+                        >{{ old('meta_description') }}</textarea>
+                        @error('meta_description')
+                        <span class="error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field full">
+                        <label for="audit_notes">Napomene</label>
+                        <textarea
+                            id="audit_notes"
+                            name="notes"
+                        >{{ old('notes') }}</textarea>
+                        @error('notes')
+                        <span class="error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field full">
+                        <label for="audit_error_message">Greška, ako je bilo</label>
+                        <textarea
+                            id="audit_error_message"
+                            name="error_message"
+                        >{{ old('error_message') }}</textarea>
+                        @error('error_message')
+                        <span class="error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="submit">Dodaj audit</button>
+                </div>
+            </form>
+
+            @if ($company->lead->websiteAudits->isEmpty())
+                <div class="lead-summary muted">
+                    Za ovaj lead još nema sačuvanih website audita.
+                </div>
+            @else
+                @foreach ($company->lead->websiteAudits as $audit)
+                    <article class="audit-item">
+                        <div class="audit-header">
+                            <strong>Audit #{{ $audit->id }}</strong>
+                            <span class="badge audit-status-{{ $audit->status }}">
+                                {{ ucfirst($audit->status) }}
+                            </span>
+                        </div>
+
+                        <div class="audit-grid">
+                            <div class="item">
+                                <div class="label">URL provere</div>
+                                <div class="value">{{ $audit->requested_url ?? '—' }}</div>
+                            </div>
+
+                            <div class="item">
+                                <div class="label">Krajnji URL</div>
+                                <div class="value">{{ $audit->final_url ?? '—' }}</div>
+                            </div>
+
+                            <div class="item">
+                                <div class="label">HTTP status</div>
+                                <div class="value">{{ $audit->http_status ?? '—' }}</div>
+                            </div>
+
+                            <div class="item">
+                                <div class="label">Dostupnost</div>
+                                <div class="value">
+                                    {{ $audit->is_reachable === null ? '—' : ($audit->is_reachable ? 'Da' : 'Ne') }}
+                                </div>
+                            </div>
+
+                            <div class="item">
+                                <div class="label">HTTPS</div>
+                                <div class="value">
+                                    {{ $audit->has_https === null ? '—' : ($audit->has_https ? 'Da' : 'Ne') }}
+                                </div>
+                            </div>
+
+                            <div class="item">
+                                <div class="label">Vreme odgovora</div>
+                                <div class="value">
+                                    {{ $audit->response_time_ms !== null ? $audit->response_time_ms . ' ms' : '—' }}
+                                </div>
+                            </div>
+
+                            <div class="item">
+                                <div class="label">Datum audita</div>
+                                <div class="value">{{ $audit->created_at?->format('d.m.Y. H:i') ?? '—' }}</div>
+                            </div>
+
+                            <div class="item">
+                                <div class="label">Audit verzija</div>
+                                <div class="value">{{ $audit->audit_version }}</div>
+                            </div>
+                        </div>
+
+                        @if ($audit->page_title || $audit->meta_description || $audit->notes || $audit->error_message)
+                            <div class="audit-details">
+                                @if ($audit->page_title)
+                                    <p><strong>Naslov stranice:</strong> {{ $audit->page_title }}</p>
+                                @endif
+
+                                @if ($audit->meta_description)
+                                    <p><strong>Meta description:</strong> {{ $audit->meta_description }}</p>
+                                @endif
+
+                                @if ($audit->notes)
+                                    <p><strong>Napomene:</strong> {{ $audit->notes }}</p>
+                                @endif
+
+                                @if ($audit->error_message)
+                                    <p><strong>Greška:</strong> {{ $audit->error_message }}</p>
+                                @endif
+                            </div>
+                        @endif
+                    </article>
+                @endforeach
+            @endif
+        </section>
+    @endif
 </main>
 </body>
 </html>

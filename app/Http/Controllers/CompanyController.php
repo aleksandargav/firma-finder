@@ -9,6 +9,7 @@ use Illuminate\View\View;
 use App\Models\CompanyLead;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rule;
+use App\Models\CompanyWebsiteAudit;
 
 class CompanyController extends Controller
 {
@@ -98,6 +99,10 @@ class CompanyController extends Controller
     }
     public function show(Company $company): View
     {
+        $company->load([
+            'lead.websiteAudits' => fn ($query) => $query->latestFirst(),
+        ]);
+
         return view('companies.show', [
             'company' => $company,
         ]);
@@ -174,6 +179,64 @@ class CompanyController extends Controller
         return redirect()
             ->route('companies.show', $company)
             ->with('success', 'Lead je uspešno ažuriran.');
+    }
+
+    public function storeWebsiteAudit(Request $request, Company $company): RedirectResponse
+    {
+        $lead = $company->lead;
+
+        if (! $lead) {
+            return redirect()
+                ->route('companies.show', $company)
+                ->with('error', 'Website audit se može dodati samo firmi koja ima CRM lead.');
+        }
+
+        $request->merge([
+            'requested_url' => $this->normalizeWebsiteUrl(
+                $request->input('requested_url')
+            ),
+        ]);
+
+        $validated = $request->validate([
+            'requested_url' => [
+                'nullable',
+                'url',
+                'max:500',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $host = parse_url((string) $value, PHP_URL_HOST);
+
+                    if ($host === false || $host === null || ! str_contains($host, '.')) {
+                        $fail('URL provere mora sadržati validan domen, na primer primer.rs.');
+                    }
+                },
+            ],
+            'final_url' => [
+                'nullable',
+                'url',
+                'max:500',
+            ],
+            'status' => [
+                'required',
+                Rule::in(CompanyWebsiteAudit::STATUSES),
+            ],
+            'http_status' => ['nullable', 'integer', 'min:100', 'max:599'],
+            'is_reachable' => ['nullable', 'boolean'],
+            'has_https' => ['nullable', 'boolean'],
+            'redirect_count' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'response_time_ms' => ['nullable', 'integer', 'min:0', 'max:600000'],
+            'page_title' => ['nullable', 'string', 'max:500'],
+            'meta_description' => ['nullable', 'string', 'max:5000'],
+            'notes' => ['nullable', 'string', 'max:5000'],
+            'error_message' => ['nullable', 'string', 'max:5000'],
+            'started_at' => ['nullable', 'date'],
+            'completed_at' => ['nullable', 'date'],
+        ]);
+
+        $lead->websiteAudits()->create($validated);
+
+        return redirect()
+            ->route('companies.show', $company)
+            ->with('success', 'Website audit je uspešno dodat.');
     }
 
     public function leadsIndex(Request $request): View

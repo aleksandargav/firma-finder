@@ -22,3 +22,5 @@ Route::post('/companies/{company:registration_number}/lead', [CompanyController:
 Route::put('/companies/{company:registration_number}/lead', [CompanyController::class, 'updateLead'])
     ->name('companies.leads.update');
 
+Route::post('/companies/{company:registration_number}/website-audits', [CompanyController::class, 'storeWebsiteAudit'])
+    ->name('companies.website-audits.store');
