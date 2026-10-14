@@ -68,6 +68,21 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 - [x] Feature testovi za model, relacije, cascade brisanje, validaciju
   i UI tok
 
+### Tehnička provera URL-a
+
+- [x] `WebsiteAuditService` za ručno pokretanje provere
+- [x] Ruta `POST /website-audits/{audit}/run`
+- [x] Dugme **Pokreni tehničku proveru** na detalju firme
+- [x] Provera dostupnosti URL-a
+- [x] HTTP status kod
+- [x] Krajnji URL posle redirekcija
+- [x] Provera HTTPS-a
+- [x] Vreme odgovora
+- [x] Izdvajanje naslova stranice
+- [x] Izdvajanje meta description-a
+- [x] Čuvanje razloga greške kada provera ne uspe
+- [x] Feature testovi sa fake HTTP odgovorima
+
 ---
 
 ## Sledeće: CRM završetak
@@ -99,6 +114,7 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 - [x] Testovi za automatsko `website_checked_at`
 - [x] Testovi za `CompanyWebsiteAudit` model, relacije i cascade brisanje
 - [x] Testovi za ručno kreiranje website audita kroz UI
+- [x] Testovi za ručnu tehničku proveru URL-a
 
 ---
 
@@ -116,12 +132,12 @@ pripremu nacrta, dok konačnu odluku i slanje uvek potvrđuje korisnik.
 
 ### Tehnička provera
 
-- [ ] Provera dostupnosti URL-a
-- [ ] HTTP status kod
-- [ ] Krajnji URL posle redirekcija
-- [ ] Provera HTTPS-a
-- [ ] Vreme odgovora
-- [ ] Razlog greške, kada provera ne uspe
+- [x] Provera dostupnosti URL-a
+- [x] HTTP status kod
+- [x] Krajnji URL posle redirekcija
+- [x] Provera HTTPS-a
+- [x] Vreme odgovora
+- [x] Razlog greške, kada provera ne uspe
 - [ ] Rate limiting i ograničenje paralelnih provera
 - [ ] Audit queue/job infrastruktura
 

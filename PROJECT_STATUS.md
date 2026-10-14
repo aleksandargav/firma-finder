@@ -169,6 +169,13 @@ na primer iz `contacted` u `qualified`.
     - grešku, ako je bilo;
     - datum početka i završetka provere.
 - Website audit se trenutno unosi ručno.
+- Dodat je `WebsiteAuditService` za ručno pokretanje tehničke provere sajta.
+- Tehnička provera čuva HTTP status, krajnji URL, HTTPS status, broj
+  redirekcija, vreme odgovora, naslov stranice i meta description.
+- Ako sajt nije dostupan ili provera ne uspe, audit dobija status `failed`
+  i čuva se razlog greške.
+- Na detalju firme postoji dugme **Pokreni tehničku proveru** za svaki
+  postojeći audit.
 - Postoje feature testovi za:
     - kreiranje audita za lead;
     - relaciju lead → audits;
@@ -177,7 +184,11 @@ na primer iz `contacted` u `qualified`.
     - validaciju statusa audita;
     - ručno kreiranje audita kroz UI;
     - odbijanje nevalidnog URL-a i statusa;
-    - sprečavanje kreiranja audita bez CRM leada.
+    - sprečavanje kreiranja audita bez CRM leada;
+    - uspešnu tehničku proveru URL-a;
+    - neuspešnu tehničku proveru kada sajt nije dostupan;
+    - tehničku proveru kada URL nije definisan;
+    - pokretanje tehničke provere kroz UI.
 
 ## Trenutni testni zapisi
 
@@ -192,32 +203,32 @@ Postoji jedan ručni testni lead:
 - Datum prvog kontakta: `2026-10-11 08:18:28 UTC`
 
 Za ovaj lead postoje ručni testni website audit zapisi koji služe za
-proveru prikaza istorije audita i UI forme.
+proveru prikaza istorije audita, UI forme i tehničke provere sajta.
 
 ## Aktivni fokus
 
-Website audit osnova je završena. Sledeći korak je proširenje audit
-modula tehničkom proverom URL-a, HTTP statusa, redirekcija i HTTPS-a.
+Website audit osnova i ručna tehnička provera URL-a su završeni.
+Sledeći korak je proširenje audit modula Lighthouse rezultatima i
+desktop/mobile screenshotovima.
 
 ## Sledeći zadatak
 
-Dodati tehničku proveru URL-a u website audit modulu, uz čuvanje:
+Dodati Lighthouse rezultate i desktop/mobile screenshotove u website
+audit modul, uz zasebno skladištenje artefakata.
 
-- HTTP statusa;
-- krajnjeg URL-a posle redirekcija;
-- HTTPS statusa;
-- broja redirekcija;
-- vremena odgovora;
-- razloga greške, kada provera ne uspe.
+Pre implementacije proveriti lokalne uslove:
 
-Tehnička provera ostaje ručno pokrenuta u prvoj verziji.
+- Node.js verziju;
+- Chrome ili Chromium instalaciju;
+- Lighthouse instalaciju;
+- način pokretanja Lighthouse-a iz Laravel aplikacije.
 
 ## Plan nakon website audit osnove
 
-1. Dodati tehničku proveru URL-a, HTTP statusa, redirekcija i HTTPS-a.
-2. Dodati Lighthouse rezultate za performance, accessibility,
+1. Dodati Lighthouse rezultate za performance, accessibility,
    best practices i SEO.
-3. Dodati desktop i mobilne screenshotove.
+2. Dodati desktop i mobilne screenshotove.
+3. Dodati lokalno skladištenje audit artefakata.
 4. Dodati AI analizu zasnovanu na tehničkim dokazima i snimcima.
 5. Dodati nacrt ponude uz obaveznu ručnu proveru i odobrenje.
 6. Tek nakon potvrđenog kvaliteta dodati queue, rate limiting i batch
@@ -227,11 +238,11 @@ Tehnička provera ostaje ručno pokrenuta u prvoj verziji.
 
 - URL, telefon i e-mail unose se ručno.
 - Website audit se unosi ručno kroz formu na detalju firme.
-- Tehnička provera da li sajt radi još uvek se vrši ručno.
+- Tehnička provera URL-a se pokreće ručno za pojedinačan audit.
 - `website_checked_at` se automatski postavlja pri kreiranju leada i
   promeni statusa sajta.
-- Nema automatske tehničke provere HTTP statusa, redirekcija, HTTPS-a,
-  Lighthouse rezultata ili vizuelnog audita.
+- Nema automatskog ili zakazanog ponavljanja tehničke provere.
+- Nema Lighthouse rezultata ni vizuelnog audita.
 - AI analiza, Lighthouse rezultati i screenshotovi nisu implementirani.
 - Nema AI API integracije.
 - Nema automatskog slanja poruka, e-mailova ili ponuda.

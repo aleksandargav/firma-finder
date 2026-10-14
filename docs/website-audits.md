@@ -128,6 +128,35 @@ Audit se može dodati samo firmi koja već ima CRM lead.
 
 ---
 
+## Tehnička provera URL-a
+
+Tehnička provera se pokreće ručno klikom na **Pokreni tehničku proveru**
+pored postojećeg audita.
+
+Ruta:
+
+```text
+POST /website-audits/{audit}/run
+```
+
+Servis `App\Services\WebsiteAuditService`:
+
+1. postavlja audit u status `pending`;
+2. čuva `started_at`;
+3. šalje GET zahtev ka `requested_url`;
+4. čuva HTTP status i krajnji URL;
+5. proverava da li krajnji URL koristi HTTPS;
+6. čuva vreme odgovora u milisekundama;
+7. pokušava da izvuče naslov stranice i meta description;
+8. postavlja status `completed` kada je odgovor primljen;
+9. postavlja status `failed` i `error_message` kada sajt nije dostupan
+   ili dođe do greške.
+
+Trenutna provera ne koristi queue, batch obradu, Lighthouse, screenshotove
+ni AI analizu.
+
+---
+
 ## Prikaz istorije
 
 Na detalju firme, u sekciji **Website audit istorija**, prikazuju se:
@@ -189,12 +218,13 @@ osim ako postoji konkretan dokaz i korisnik ručno prilagodi poruku.
 2. Korisnik ručno popuni formu za website audit.
 3. Sistem kreira audit sa izabranim statusom, trenutno najčešće
    `pending`, `completed` ili `failed`.
-4. Kasnije: sistem pokreće tehničku proveru URL-a.
-5. Kasnije: sistem pravi desktop i mobilni screenshot.
-6. Kasnije: sistem pokreće Lighthouse i čuva rezultate.
-7. Kasnije: AI analizira dokaze i vraća strukturisan rezultat.
-8. Kasnije: korisnik pregleda, potvrđuje ili odbacuje nalaze.
-9. Kasnije: tek nakon odobrenja može se generisati nacrt ponude.
+4. Korisnik može da pokrene tehničku proveru za postojeći audit.
+5. Sistem ažurira audit sa tehničkim rezultatima.
+6. Kasnije: sistem pravi desktop i mobilni screenshot.
+7. Kasnije: sistem pokreće Lighthouse i čuva rezultate.
+8. Kasnije: AI analizira dokaze i vraća strukturisan rezultat.
+9. Kasnije: korisnik pregleda, potvrđuje ili odbacuje nalaze.
+10. Kasnije: tek nakon odobrenja može se generisati nacrt ponude.
 ```
 
 U prvoj verziji audit se unosi ručno za jednu firmu. Batch obrada,
@@ -208,23 +238,23 @@ pouzdan.
 | Sloj | Predlog | Uloga |
 |---|---|---|
 | Laravel | postojeća aplikacija | CRM, modeli, UI, audit istorija |
-| Queue | Laravel job | Pozadinski tok audita |
-| HTTP provera | PHP HTTP client ili poseban servis | Dostupnost, redirekcije i status |
-| Browser automatizacija | Playwright | Renderovanje i screenshotovi |
-| Tehnički audit | Lighthouse | Performance, accessibility, SEO i best practices |
+| HTTP provera | Laravel HTTP client | Dostupnost, redirekcije i status |
+| Queue | Laravel job, kasnije | Pozadinski tok audita |
+| Browser automatizacija | Playwright, kasnije | Renderovanje i screenshotovi |
+| Tehnički audit | Lighthouse, kasnije | Performance, accessibility, SEO i best practices |
 | AI analiza | API izabran kasnije | Strukturisani nalazi iz dokaza |
-| Skladištenje | Laravel storage | Screenshotovi i izveštaji |
+| Skladištenje | Laravel storage, kasnije | Screenshotovi i izveštaji |
 
-Pre implementacije tehničke provere treba proveriti lokalne Node.js,
-Chrome/Chromium i Lighthouse uslove, kao i način pokretanja Playwright
-procesa iz Laravel queue posla.
+Pre implementacije Lighthouse-a i screenshotova treba proveriti lokalne
+Node.js, Chrome/Chromium i Lighthouse uslove, kao i način pokretanja
+Playwright procesa iz Laravel queue posla.
 
 ---
 
 ## Van opsega trenutne verzije
 
 - AI analiza, Lighthouse rezultati i screenshotovi.
-- Automatsko pokretanje tehničke provere URL-a.
+- Automatsko ili zakazano pokretanje tehničke provere URL-a.
 - Masovno kreiranje audita za više firmi.
 - Masovno automatsko crawl-ovanje svih firmi.
 - Zaobilaženje CAPTCHA, autentikacije ili drugih zaštita.
