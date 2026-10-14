@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Company;
 use App\Models\CompanyDataPoint;
+use App\Models\CompanyLead;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -263,5 +264,122 @@ class CompanyDataPointUiTest extends TestCase
 
         $this->assertSame(CompanyDataPoint::STATUS_VERIFIED, $verified->fresh()->status);
         $this->assertSame(CompanyDataPoint::STATUS_REJECTED, $rejected->fresh()->status);
+    }
+
+    public function test_user_can_apply_verified_website_to_lead_when_lead_does_not_exist(): void
+    {
+        $company = $this->createCompany('12345688');
+
+        $dataPoint = $this->createDataPoint(
+            $company,
+            CompanyDataPoint::FIELD_WEBSITE,
+            'https://example.com',
+            CompanyDataPoint::STATUS_VERIFIED
+        );
+
+        $dataPoint->update([
+            'verified_at' => now(),
+            'verified_by' => 'user',
+        ]);
+
+        $response = $this->post("/data-points/{$dataPoint->id}/apply-to-lead");
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('company_leads', [
+            'company_id' => $company->id,
+            'website_url' => 'https://example.com',
+            'website_status' => CompanyLead::WEBSITE_STATUS_ACTIVE,
+            'lead_status' => CompanyLead::LEAD_STATUS_NEW,
+            'lead_score' => 0,
+        ]);
+
+        $this->assertNotNull($company->lead->website_checked_at);
+    }
+
+    public function test_user_can_apply_verified_website_to_existing_lead(): void
+    {
+        $company = $this->createCompany('12345689');
+
+        $company->lead()->create([
+            'website_url' => 'https://old-example.com',
+            'website_status' => CompanyLead::WEBSITE_STATUS_UNKNOWN,
+            'lead_status' => CompanyLead::LEAD_STATUS_CONTACTED,
+            'lead_score' => 45,
+            'phone' => '+381600000000',
+            'email' => 'info@example.com',
+            'notes' => 'Postojeći CRM podaci.',
+            'website_checked_at' => now()->subDay(),
+        ]);
+
+        $dataPoint = $this->createDataPoint(
+            $company,
+            CompanyDataPoint::FIELD_WEBSITE,
+            'https://example.com',
+            CompanyDataPoint::STATUS_VERIFIED
+        );
+
+        $dataPoint->update([
+            'verified_at' => now(),
+            'verified_by' => 'user',
+        ]);
+
+        $response = $this->post("/data-points/{$dataPoint->id}/apply-to-lead");
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('company_leads', [
+            'company_id' => $company->id,
+            'website_url' => 'https://example.com',
+            'website_status' => CompanyLead::WEBSITE_STATUS_ACTIVE,
+            'lead_status' => CompanyLead::LEAD_STATUS_CONTACTED,
+            'lead_score' => 45,
+            'phone' => '+381600000000',
+            'email' => 'info@example.com',
+            'notes' => 'Postojeći CRM podaci.',
+        ]);
+
+        $this->assertNotNull($company->lead->fresh()->website_checked_at);
+    }
+
+    public function test_user_cannot_apply_unverified_website_to_lead(): void
+    {
+        $company = $this->createCompany('12345690');
+
+        $dataPoint = $this->createDataPoint(
+            $company,
+            CompanyDataPoint::FIELD_WEBSITE,
+            'https://example.com',
+            CompanyDataPoint::STATUS_CANDIDATE
+        );
+
+        $response = $this->post("/data-points/{$dataPoint->id}/apply-to-lead");
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseMissing('company_leads', [
+            'company_id' => $company->id,
+            'website_url' => 'https://example.com',
+        ]);
+    }
+
+    public function test_user_cannot_apply_non_website_data_point_to_lead(): void
+    {
+        $company = $this->createCompany('12345691');
+
+        $dataPoint = $this->createDataPoint(
+            $company,
+            CompanyDataPoint::FIELD_EMAIL,
+            'info@example.com',
+            CompanyDataPoint::STATUS_VERIFIED
+        );
+
+        $response = $this->post("/data-points/{$dataPoint->id}/apply-to-lead");
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseMissing('company_leads', [
+            'company_id' => $company->id,
+        ]);
     }
 }

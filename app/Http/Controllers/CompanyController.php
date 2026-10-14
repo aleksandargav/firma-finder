@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CompanyDataPoint;
 use App\Services\WebsiteAuditService;
 use App\Models\Company;
 use Illuminate\Database\Eloquent\Builder;
@@ -249,6 +250,43 @@ class CompanyController extends Controller
         return redirect()
             ->route('companies.show', $audit->companyLead->company)
             ->with('success', 'Tehnička provera sajta je završena.');
+    }
+
+    public function applyWebsiteDataPointToLead(
+        CompanyDataPoint $dataPoint
+    ): RedirectResponse {
+        $company = $dataPoint->company;
+
+        if (! $company) {
+            return redirect()
+                ->route('companies.index')
+                ->with('error', 'Enrichment zapis nije povezan sa APR firmom.');
+        }
+
+        if ($dataPoint->field !== CompanyDataPoint::FIELD_WEBSITE) {
+            return redirect()
+                ->route('companies.show', $company)
+                ->with('error', 'U CRM se može primeniti samo potvrđen website kandidat.');
+        }
+
+        if ($dataPoint->status !== CompanyDataPoint::STATUS_VERIFIED) {
+            return redirect()
+                ->route('companies.show', $company)
+                ->with('error', 'Samo potvrđen website kandidat može se primeniti u CRM.');
+        }
+
+        $company->lead()->updateOrCreate(
+            ['company_id' => $company->id],
+            [
+                'website_url' => $dataPoint->value,
+                'website_status' => CompanyLead::WEBSITE_STATUS_ACTIVE,
+                'website_checked_at' => now(),
+            ]
+        );
+
+        return redirect()
+            ->route('companies.show', $company)
+            ->with('success', 'Potvrđeni website je primenjen u CRM.');
     }
 
     public function leadsIndex(Request $request): View

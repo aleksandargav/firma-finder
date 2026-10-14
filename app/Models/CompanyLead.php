@@ -8,18 +8,24 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CompanyLead extends Model
 {
+    public const WEBSITE_STATUS_UNKNOWN = 'unknown';
+    public const WEBSITE_STATUS_ACTIVE = 'active';
+
     public const WEBSITE_STATUSES = [
-        'unknown' => 'Nepoznato',
+        self::WEBSITE_STATUS_UNKNOWN => 'Nepoznato',
         'no_website' => 'Nema sajta',
-        'active' => 'Sajt aktivan',
+        self::WEBSITE_STATUS_ACTIVE => 'Sajt aktivan',
         'inactive' => 'Sajt neaktivan',
         'error' => 'Greška pri proveri',
     ];
 
+    public const LEAD_STATUS_NEW = 'new';
+    public const LEAD_STATUS_CONTACTED = 'contacted';
+
     public const LEAD_STATUSES = [
-        'new' => 'Nov',
+        self::LEAD_STATUS_NEW => 'Nov',
         'in_progress' => 'U obradi',
-        'contacted' => 'Kontaktiran',
+        self::LEAD_STATUS_CONTACTED => 'Kontaktiran',
         'qualified' => 'Kvalifikovan',
         'rejected' => 'Odbijen',
         'converted' => 'Konvertovan',

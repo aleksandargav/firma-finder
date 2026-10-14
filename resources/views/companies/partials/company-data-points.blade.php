@@ -150,11 +150,38 @@
                                 </button>
                             </form>
                         @endif
+
+                        @if (
+                            $dataPoint->field === App\Models\CompanyDataPoint::FIELD_WEBSITE
+                            && $dataPoint->status === App\Models\CompanyDataPoint::STATUS_VERIFIED
+                        )
+                            <form
+                                method="POST"
+                                action="{{ route('data-points.apply-to-lead', $dataPoint) }}"
+                            >
+                                @csrf
+
+                                <button type="submit" class="audit-run-button">
+                                    Primeni u CRM
+                                </button>
+                            </form>
+                        @endif
                     </div>
                 </div>
 
                 <div class="audit-details">
                     <p><strong>Izvor:</strong> {{ ucfirst($dataPoint->source) }}</p>
+
+                    @if (
+                        $dataPoint->field === App\Models\CompanyDataPoint::FIELD_WEBSITE
+                        && $dataPoint->status === App\Models\CompanyDataPoint::STATUS_VERIFIED
+                    )
+                        <p>
+                            <strong>Trenutni CRM website:</strong>
+                            {{ $company->lead?->website_url ?? 'nije definisan' }}
+                        </p>
+                    @endif
+
                     <p><strong>Confidence:</strong> {{ ucfirst($dataPoint->confidence) }}</p>
                     <p><strong>Licenca:</strong> {{ ucfirst($dataPoint->data_license_status) }}</p>
                     <p><strong>Dodat:</strong> {{ $dataPoint->created_at?->format('d.m.Y. H:i') }}</p>
