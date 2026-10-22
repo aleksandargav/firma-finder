@@ -393,26 +393,30 @@ Automatska verifikacija trenutno nije implementirana.
 
 ## Primer uspešnog toka
 
+Sledeći primeri su hipotetički i služe samo za objašnjenje mogućih
+tokova. Ne predstavljaju stvarne rezultate CompanyWall-a, OSM-a ili
+drugih integracija. Automatska verifikacija trenutno nije implementirana.
+
 ```text
 APR firma:
-- ELEKTROHEM DOO
-- MB: 17204106
+- Testna Firma DOO (izmišljeni naziv)
+- MB: [placeholder]
 
-CompanyWall:
-- MB: 17204106
-- Website: [https://elektrohem.rs](https://elektrohem.rs)
+Hipotetički izvor:
+- MB: [placeholder]
+- Website: https://example.com
 
 Provera:
 - MB match: da
 - URL radi: da
 - HTTPS: da
 - Naziv firme u sadržaju: da
-- Licenca: dozvoljena
+- Uslove korišćenja izvora treba proveriti pre integracije i korišćenja
+  podataka.
 
-Rezultat:
+Hipotetički rezultat:
 - status: verified
-- verified_by: system
-- CRM website_url: [https://elektrohem.rs](https://elektrohem.rs)
+- CRM website_url: https://example.com
 - CRM website_status: active
 ```
 
@@ -421,15 +425,15 @@ Rezultat:
 ## Primer spornog slučaja
 
 ```text
-CompanyWall:
-- MB: 17204106
-- Website: [https://elektrohem.rs](https://elektrohem.rs)
+Hipotetički izvor A:
+- MB: [placeholder]
+- Website: https://example.com
 
-OpenStreetMap:
-- Naziv: Elektrohem
-- Website: [https://elektrohem-trade.rs](https://elektrohem-trade.rs)
+Hipotetički izvor B:
+- Naziv: Testna Firma
+- Website: https://example.org
 
-Rezultat:
+Hipotetički rezultat:
 - status: needs_review
 - razlog: dva izvora vraćaju različite website URL-ove
 ```

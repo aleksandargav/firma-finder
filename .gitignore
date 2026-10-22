@@ -3,6 +3,8 @@
 .env
 .env.backup
 .env.production
+.env.*
+!/.env.example
 .phpactor.json
 .phpunit.result.cache
 /.codex
@@ -30,6 +32,11 @@ Thumbs.db
 /database/*.sqlite
 /database/*.sqlite-*
 /database/*.db
+/database/exports/
+/database/dumps/
+/database/snapshots/
+/exports/
+/data-exports/
 
 # Generated Laravel runtime data
 /storage/logs/

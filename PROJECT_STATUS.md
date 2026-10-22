@@ -271,15 +271,18 @@ na primer iz `contacted` u `qualified`.
 
 ## Trenutni testni zapisi
 
-Postoji jedan ručni testni lead:
+Lokalno testiranje koristi zapis firme iz APR registra. Identitet firme
+u ovom dokumentu zamenjen je neutralnim primerom. Navedeni CRM status,
+score i datum kontakta služe isključivo za testiranje aplikacije i ne
+predstavljaju stvarno kontaktiranje niti poslovni odnos.
 
-- Firma: ELEKTROHEM DOO, Beograd (Novi Beograd)
-- Matični broj: `17204106`
+- Firma: Primer firme
+- Matični broj: `[placeholder]`
 - Website URL: `https://example.com`
 - Website status: `active`
 - Lead status: `qualified`
 - Lead score: `10`
-- Datum prvog kontakta: `2026-10-11 08:18:28 UTC`
+- Datum prvog kontakta: `[testni datum]`
 
 Za ovaj lead postoje ručni testni website audit zapisi koji služe za
 proveru prikaza istorije audita, UI forme i tehničke provere sajta.

@@ -16,7 +16,7 @@ class CompanyDataPointTest extends TestCase
     {
         return array_merge([
             'company_id' => null,
-            'external_identifier' => '17204106',
+            'external_identifier' => '99999999',
             'identifier_type' => CompanyDataPoint::IDENTIFIER_REGISTRATION_NUMBER,
             'field' => CompanyDataPoint::FIELD_WEBSITE,
             'value' => 'https://example.com',

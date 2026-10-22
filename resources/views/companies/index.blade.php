@@ -285,7 +285,7 @@
                     type="search"
                     name="search"
                     value="{{ $filters['search'] }}"
-                    placeholder="npr. Elektrohem ili 17204106"
+                    placeholder="npr. Primer firme ili matični broj"
                 >
             </label>
 

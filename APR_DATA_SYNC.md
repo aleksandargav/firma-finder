@@ -141,8 +141,11 @@ Očekivani rezultat za presek `2026-09-30`:
 
 Primer provere pojedinačne firme:
 
+Pre pokretanja zamenite `UNESITE_MATICNI_BROJ` važećim matičnim brojem
+firme koju želite da proverite.
+
 ```bash
-php8.5 artisan tinker --execute="dump(App\Models\Company::where('registration_number', '17204106')->first(['registration_number','business_name','source_snapshot_date','imported_at','updated_at'])->toArray());"
+php8.5 artisan tinker --execute="dump(App\Models\Company::where('registration_number', 'UNESITE_MATICNI_BROJ')->first(['registration_number','business_name','source_snapshot_date','imported_at','updated_at'])?->toArray());"
 ```
 
 ---
