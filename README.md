@@ -4,8 +4,8 @@ Firma Finder is a local Laravel application for finding, reviewing, and
 qualifying companies from the Serbian Business Registers Agency (APR)
 register. It uses a local APR catalog to organize the sales process for
 website development, redesign, and improvement services. The user
-interface is currently written in Serbian and is being translated to
-English.
+interface is written in Serbian, because the tool is built for the Serbian
+market. Documentation, code messages and this README are in English.
 
 ## Technology
 
