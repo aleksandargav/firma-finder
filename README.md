@@ -1,60 +1,61 @@
 # Firma Finder
 
-Firma Finder je lokalna Laravel aplikacija za pronalaženje, pregled i
-kvalifikaciju privrednih društava iz APR registra Srbije.
+Firma Finder is a local Laravel application for finding, reviewing, and
+qualifying companies from the Serbian Business Registers Agency (APR)
+register. It uses a local APR catalog to organize the sales process for
+website development, redesign, and improvement services. The user
+interface is currently written in Serbian and is being translated to
+English.
 
-Aplikacija koristi lokalni APR katalog i služi za organizovanje prodajnog
-procesa za usluge izrade, redizajna i unapređenja poslovnih sajtova.
-
-## Tehnologija
+## Technology
 
 - Laravel
 - PHP 8.5
-- SQLite lokalna baza
-- Blade prikazi
-- Lokalni razvoj kroz `php8.5 artisan serve`
+- Local SQLite database
+- Blade views
+- Local development via `php8.5 artisan serve`
 
-## Osnovna arhitektura
+## Core architecture
 
-### APR podaci
+### APR data
 
-Tabela `companies` čuva uvezene, izvorne APR podatke:
+The `companies` table stores imported, source APR data:
 
-- matični broj;
-- naziv firme;
-- opštinu;
+- registration number;
+- company name;
+- municipality;
 - status;
-- pravnu formu;
-- delatnost;
-- datum osnivanja;
-- datum APR preseka.
+- legal form;
+- business activity;
+- date of incorporation;
+- APR snapshot date.
 
-APR podaci su izvorni katalog i ne smeju biti prepisivani CRM ili audit
-podacima.
+APR data is the source catalog and must not be overwritten by CRM or audit
+data.
 
-### CRM podaci
+### CRM data
 
-Tabela `company_leads` čuva ručne CRM podatke:
+The `company_leads` table stores manually entered CRM data:
 
-- URL sajta;
-- status sajta;
-- telefon;
-- e-mail;
+- website URL;
+- website status;
+- phone;
+- email;
 - lead status;
 - lead score;
-- napomene;
-- datum provere sajta;
-- datum prvog kontakta.
+- notes;
+- website check date;
+- first contact date.
 
-Veza između `Company` i `CompanyLead` je striktno 1:1 i zaštićena je
-unique indeksom nad `company_id`.
+The relationship between `Company` and `CompanyLead` is strictly 1:1 and is
+enforced by a unique index on `company_id`.
 
 ### Website audit
 
-Tabela `company_website_audits` čuva istoriju tehničkih i ručnih provera
-sajta.
+The `company_website_audits` table stores the history of technical and
+manual website checks.
 
-Jedan CRM lead može imati više website audit zapisa. Audit može biti:
+A single CRM lead can have multiple website audit records. An audit can be:
 
 - `pending`;
 - `completed`;
@@ -62,148 +63,150 @@ Jedan CRM lead može imati više website audit zapisa. Audit može biti:
 
 ### Company enrichment
 
-Tabela `company_data_points` čuva kandidate i potvrđene podatke o firmi:
+The `company_data_points` table stores candidate and verified company data:
 
 - website;
-- e-mail;
-- telefon;
-- adresa.
+- email;
+- phone;
+- address.
 
-Enrichment podaci su odvojeni od APR podataka i od CRM podataka. Nijedan
-enrichment zapis ne menja automatski APR katalog niti CRM lead.
+Enrichment data is kept separate from both APR data and CRM data. No
+enrichment record automatically changes the APR catalog or a CRM lead.
 
-## Trenutno završeno
+## Currently completed
 
-### APR katalog
+### APR catalog
 
-- Lokalni APR katalog firmi.
-- Uvoz 125.054 firmi.
-- Pretraga po nazivu firme i matičnom broju.
-- Filter po opštini.
-- Filter po šifri delatnosti.
-- Filter po APR statusu.
-- Paginacija.
-- Detalj firme.
+- Local APR company catalog.
+- Import of 125,054 companies.
+- Search by company name and registration number.
+- Filter by municipality.
+- Filter by activity code.
+- Filter by APR status.
+- Pagination.
+- Company detail page.
 
 ### CRM
 
-- Ručno kreiranje i ažuriranje CRM leada.
-- URL sajta, telefon, e-mail i napomene.
-- Status sajta.
-- Status leada.
+- Manual creation and updating of CRM leads.
+- Website URL, phone, email, and notes.
+- Website status.
+- Lead status.
 - Lead score.
-- Automatski datum prvog kontakta.
-- CRM lista na `/leads`.
-- Filteri i sortiranje CRM liste.
-- CRM status u katalogu firmi.
-- Validacija i normalizacija website URL-a.
-- Automatski datum poslednje provere sajta.
+- Automatic first contact date.
+- CRM list at `/leads`.
+- Filtering and sorting of the CRM list.
+- CRM status in the company catalog.
+- Website URL validation and normalization.
+- Automatic last website check date.
 
 ### Website audit
 
-- Tabela `company_website_audits`.
-- Model `CompanyWebsiteAudit`.
-- Relacija `CompanyLead hasMany CompanyWebsiteAudit`.
-- Relacija `CompanyWebsiteAudit belongsTo CompanyLead`.
-- Mogućnost više audita za isti lead.
-- Cascade brisanje audita pri brisanju leada.
-- Statusi audita: `pending`, `completed` i `failed`.
-- Prikaz istorije audita na detalju firme.
-- Ručna forma za kreiranje website audita.
-- Ručna tehnička provera URL-a.
-- Provera HTTP statusa, HTTPS-a, redirekcija, vremena odgovora,
-  naslova stranice i meta description-a.
-- Feature testovi za model, relacije, validaciju, UI i tehničku proveru.
+- `company_website_audits` table.
+- `CompanyWebsiteAudit` model.
+- `CompanyLead hasMany CompanyWebsiteAudit` relationship.
+- `CompanyWebsiteAudit belongsTo CompanyLead` relationship.
+- Support for multiple audits per lead.
+- Cascade deletion of audits when a lead is deleted.
+- Audit statuses: `pending`, `completed`, and `failed`.
+- Audit history on the company detail page.
+- Manual form for creating a website audit.
+- Manual technical URL check.
+- Checks for HTTP status, HTTPS, redirects, response time, page title, and
+  meta description.
+- Feature tests for the model, relationships, validation, UI, and technical
+  check.
 
 ### Company enrichment
 
-- Tabela `company_data_points`.
-- Model `CompanyDataPoint`.
-- Relacija `Company hasMany CompanyDataPoint`.
-- Cascade brisanje enrichment zapisa pri brisanju firme.
-- Podrška za website, e-mail, telefon i adresu.
-- Konstante za izvore, confidence, licencni status i status zapisa.
-- Validaciona pravila za enrichment podatke.
-- Ručno dodavanje enrichment kandidata kroz UI.
-- Ručna potvrda, odbijanje i označavanje za pregled.
-- Eksplicitna primena potvrđenog website URL-a u CRM.
-- Pokretanje website audita iz potvrđenog website kandidata.
-- Feature testovi za model, relacije, validaciju, UI i audit tok.
+- `company_data_points` table.
+- `CompanyDataPoint` model.
+- `Company hasMany CompanyDataPoint` relationship.
+- Cascade deletion of enrichment records when a company is deleted.
+- Support for website, email, phone, and address.
+- Constants for sources, confidence, license status, and record status.
+- Validation rules for enrichment data.
+- Manual addition of enrichment candidates through the UI.
+- Manual verification, rejection, and flagging for review.
+- Explicit application of a verified website URL to the CRM.
+- Running a website audit from a verified website candidate.
+- Feature tests for the model, relationships, validation, UI, and audit
+  flow.
 
-## Company enrichment princip
+## Company enrichment principle
 
-Enrichment sloj služi za prikupljanje i ručnu verifikaciju dodatnih
-podataka o firmi.
+The enrichment layer is used to collect and manually verify additional
+company data.
 
-Svaki zapis u `company_data_points` ima:
+Each record in `company_data_points` has:
 
-- tip podatka;
-- vrednost;
-- izvor;
+- data type;
+- value;
+- source;
 - confidence;
-- licencni status;
-- status zapisa;
-- opcionu napomenu;
-- opcionu izvornu referencu.
+- license status;
+- record status;
+- optional note;
+- optional source reference.
 
-Statusi zapisa su:
+The record statuses are:
 
-- `candidate` — kandidat za pregled;
-- `verified` — ručno potvrđen;
-- `rejected` — ručno odbijen;
-- `needs_review` — zahteva dodatnu proveru.
+- `candidate` — candidate for review;
+- `verified` — manually verified;
+- `rejected` — manually rejected;
+- `needs_review` — requires further checking.
 
-Za sada se enrichment podaci dodaju ručno. Automatski izvori, poput
-OpenStreetMap, Wikidata ili CompanyWall, dolaze tek nakon ručnog review
-sloja i jasnih pravila verifikacije.
+For now, enrichment data is added manually. Automated sources, such as
+OpenStreetMap, Wikidata, or CompanyWall, will come only after the manual
+review layer and clear verification rules are in place.
 
-## Primena potvrđenog website kandidata
+## Applying a verified website candidate
 
-Potvrđeni website kandidat iz enrichment sloja može se primeniti u CRM
-samo eksplicitnom korisničkom akcijom.
+A verified website candidate from the enrichment layer can be applied to
+the CRM only through an explicit user action.
 
-Kada korisnik klikne **Primeni u CRM**:
+When the user applies the candidate to the CRM:
 
-- ako lead ne postoji, kreira se novi lead;
-- ako lead postoji, ažuriraju se samo `website_url`, `website_status`
-  i `website_checked_at`;
-- `lead_status`, `lead_score`, telefon, e-mail i napomene se ne menjaju;
-- APR podaci se ne menjaju;
-- enrichment zapis ostaje `verified`.
+- if no lead exists, a new lead is created;
+- if a lead exists, only `website_url`, `website_status`,
+  and `website_checked_at` are updated;
+- `lead_status`, `lead_score`, phone, email, and notes are not changed;
+- APR data is not changed;
+- the enrichment record remains `verified`.
 
-## Pokretanje audita iz enrichment kandidata
+## Running an audit from an enrichment candidate
 
-Za potvrđeni website kandidat, kod firme koja već ima CRM lead, može se
-pokrenuti website audit.
+For a verified website candidate belonging to a company that already has a
+CRM lead, a website audit can be run.
 
-Audit se kreira u postojećoj tabeli `company_website_audits`, a
-`requested_url` se uzima iz potvrđenog enrichment kandidata.
+The audit is created in the existing `company_website_audits` table, and
+`requested_url` is taken from the verified enrichment candidate.
 
-Audit se može pokrenuti samo ako:
+An audit can be run only if:
 
-- data point je tipa `website`;
-- data point ima status `verified`;
-- firma ima CRM lead.
+- the data point is of type `website`;
+- the data point has the status `verified`;
+- the company has a CRM lead.
 
-Pokretanje audita ne menja enrichment zapis niti CRM podatke.
+Running an audit does not change the enrichment record or the CRM data.
 
-## Razvojni principi
+## Development principles
 
-- APR podaci ostaju izvorni katalog.
-- CRM podaci su ručni prodajni sloj.
-- Enrichment podaci su odvojeni sloj kandidata i potvrda.
-- Website audit je odvojen sloj tehničkih i vizuelnih provera.
-- Nijedan automatski proces ne menja APR podatke.
-- CRM se menja samo eksplicitnim korisničkim akcijama.
-- AI analiza dolazi tek nakon objektivnih tehničkih i vizuelnih provera.
-- Konačnu odluku uvek potvrđuje korisnik.
+- APR data remains the source catalog.
+- CRM data is the manual sales layer.
+- Enrichment data is a separate layer of candidates and verifications.
+- Website audit is a separate layer of technical and visual checks.
+- No automated process changes APR data.
+- The CRM is changed only through explicit user actions.
+- AI analysis comes only after objective technical and visual checks.
+- The final decision is always confirmed by the user.
 
-## Dokumentacija
+## Documentation
 
-- `APR_DATA_SYNC.md` — pravila uvoza i sinhronizacije APR podataka.
-- `crm.md` — CRM model, statusi i pravila.
-- `website-audits.md` — website audit model i tok.
-- `company-enrichment.md` — enrichment model, statusi i pravila.
-- `PROJECT_STATUS.md` — trenutno stanje projekta.
-- `ROADMAP.md` — plan daljeg razvoja.
-- `DECISIONS.md` — arhitekturne i produktne odluke.
+- `APR_DATA_SYNC.md` — APR data import and synchronization rules.
+- `crm.md` — CRM model, statuses, and rules.
+- `website-audits.md` — website audit model and flow.
+- `company-enrichment.md` — enrichment model, statuses, and rules.
+- `PROJECT_STATUS.md` — current project status.
+- `ROADMAP.md` — further development plan.
+- `DECISIONS.md` — architectural and product decisions.
