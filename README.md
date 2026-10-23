@@ -5,7 +5,7 @@ qualifying companies from the Serbian Business Registers Agency (APR)
 register. It uses a local APR catalog to organize the sales process for
 website development, redesign, and improvement services. The user
 interface is written in Serbian, because the tool is built for the Serbian
-market. Documentation, code messages and this README are in English.
+market. Documentation, code messages and this README are in English; button and label names quoted in the documentation are English translations of the Serbian interface text.
 
 ## Technology
 
