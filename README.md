@@ -10,10 +10,126 @@ English.
 ## Technology
 
 - Laravel
-- PHP 8.5
+- PHP 8.3 or newer (developed on 8.5)
 - Local SQLite database
 - Blade views
-- Local development via `php8.5 artisan serve`
+- Local development via `php artisan serve`
+
+## Getting started
+
+### Requirements
+
+- PHP `^8.3`, as required by `composer.json`. The project itself is
+  developed and documented with PHP 8.5 (`php8.5`); replace `php` with
+  `php8.5` in the commands below if that is how PHP is installed on your
+  machine.
+- Composer.
+- SQLite (`DB_CONNECTION=sqlite` in `.env.example`).
+- Node.js and npm, for the Vite and Tailwind CSS frontend build defined in
+  `package.json`. No Node.js version is pinned in the repository.
+
+### Installation
+
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate
+```
+
+`.env.example` sets `DB_CONNECTION=sqlite` without a `DB_DATABASE` path, so
+the default SQLite file `database/database.sqlite` is used.
+
+To build the frontend assets (this is also part of the `composer setup`
+script in `composer.json`):
+
+```bash
+npm install
+npm run build
+```
+
+### Loading the APR company catalog
+
+The database is not included in the repository: `database/.gitignore`
+excludes all `*.sqlite*` files. Downloaded APR snapshots are not included
+either, because `storage/app` is git-ignored. After `php artisan migrate`,
+the `companies` table is empty until you import the APR data yourself.
+
+The data comes from the APR Open Data API. `config/apr.php` reads two
+environment variables, neither of which is in `.env.example`:
+
+- `APR_API_URL` — the API endpoint. Default:
+  `https://openapi.apr.gov.rs/api/opendata/companies`.
+- `APR_CA_BUNDLE` — the CA certificate bundle used to verify the APR TLS
+  connection. Default: `storage/app/apr/ca/apr-ca.pem`. Because
+  `storage/app` is git-ignored, this file is not in the repository and
+  you have to provide it yourself.
+
+`App\Services\AprApiService` sends a plain GET request to `APR_API_URL`
+with no token or authentication header, so no API token is needed. If the
+CA bundle file does not exist or is not readable, the service throws an
+exception (`APR CA bundle nije pronađen: <path>`) before making any
+request, and `apr:sync` fails.
+
+Loading the catalog takes two steps.
+
+**1. Download a snapshot: `apr:sync`**
+
+```bash
+php artisan apr:sync
+```
+
+This command takes no options. It downloads the current APR Open Data
+snapshot, saves it locally, and prints the snapshot date, the number of
+companies, and the path of the saved file. `APR_DATA_SYNC.md` gives the
+location as `storage/app/apr/snapshots/{YYYYMMDD}/companies.json`.
+
+Note: `APR_DATA_SYNC.md` shows a `--date` option for `apr:sync`, but the
+command does not define one.
+
+**2. Import the snapshot: `apr:import`**
+
+```bash
+php artisan apr:import \
+  --file=storage/app/apr/snapshots/YYYYMMDD/companies.json \
+  --limit=134374 \
+  --batch=500 \
+  --write
+```
+
+Options:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--file` | `storage/app/apr-response.json` | Path to the APR JSON snapshot, absolute or relative to the project root. The default is not where `apr:sync` saves snapshots, so pass the path that `apr:sync` printed. |
+| `--limit` | `5` | Maximum number of records to process. Must be between 1 and 134374. |
+| `--batch` | `500` | Number of records per SQL upsert batch. Must be between 1 and 1000. |
+| `--write` | off | Write to the database. Without it, the command only does a dry run and shows a preview of up to 5 records. |
+
+With `--write`, the command asks for confirmation before it writes
+anything. Records are upserted by registration number, so running the
+import again updates existing companies instead of creating duplicates.
+Run it without `--write` first to check the file.
+
+### Running the app
+
+```bash
+php artisan serve
+```
+
+The app is then available at `http://localhost:8000` (`APP_URL` in
+`.env.example`). `composer.json` also defines a `composer dev` script,
+which runs `php artisan dev`.
+
+### Running the tests
+
+```bash
+php artisan test
+```
+
+You can also run `composer test`, which clears the configuration cache
+first and then runs `php artisan test`.
 
 ## Core architecture
 
