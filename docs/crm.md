@@ -1,156 +1,163 @@
 # CRM
 
-CRM sloj čuva ručne prodajne podatke o firmama. Odvojen je od izvornih
-APR podataka i od enrichment podataka.
+The CRM layer stores manual sales data about companies. It is separate
+from the source APR data and from the enrichment data.
 
 ## Model
 
-CRM podaci se čuvaju u tabeli `company_leads`.
+CRM data is stored in the `company_leads` table.
 
-Svaki zapis pripada tačno jednoj firmi iz `companies` tabele.
+Each record belongs to exactly one company from the `companies` table.
 
-Veza je striktno 1:1:
+The relationship is strictly 1:1:
 
 ```txt
 Company 1 — 1 CompanyLead
 ```
 
-Ograničenje je zaštićeno unique indeksom nad kolonom `company_id`.
+The constraint is enforced by a unique index on the `company_id` column.
 
-## Polja
+## Fields
 
-| Polje | Namena |
+| Field | Purpose |
 |---|---|
-| `company_id` | Firma iz APR kataloga |
-| `website_url` | Ručno unet ili potvrđen URL sajta |
-| `website_status` | Status sajta |
-| `website_checked_at` | Datum poslednje provere sajta |
-| `phone` | Telefon firme |
-| `email` | E-mail adresa firme |
-| `lead_status` | Status prodajnog leada |
-| `lead_score` | Ručni ili izračunati prioritet leada |
-| `notes` | Slobodne napomene |
-| `contacted_at` | Datum prvog kontakta |
-| `created_at` | Datum kreiranja leada |
-| `updated_at` | Datum poslednje izmene |
+| `company_id` | Company from the APR catalog |
+| `website_url` | Website URL, entered manually or applied from a verified candidate |
+| `website_status` | Website status |
+| `website_checked_at` | Date of the last website check |
+| `phone` | Company phone number |
+| `email` | Company email address |
+| `lead_status` | Sales lead status |
+| `lead_score` | Manually entered lead priority, from 0 to 100 |
+| `notes` | Free-form notes |
+| `contacted_at` | Date of first contact |
+| `created_at` | Lead creation date |
+| `updated_at` | Date of the last change |
 
-## Statusi sajta
+## Website statuses
 
-| Status | Značenje |
+| Status | Meaning |
 |---|---|
-| `none` | Nema sajta ili status još nije proveren |
-| `working` | Sajt radi |
-| `outdated` | Sajt radi, ali je vizuelno ili sadržajno zastareo |
-| `broken` | Sajt ne radi ili ima ozbiljne tehničke probleme |
-| `no_website` | Firma nema sajt |
+| `unknown` | Unknown; the default for a new lead |
+| `no_website` | The company has no website |
+| `active` | The website is active |
+| `inactive` | The website is inactive |
+| `error` | An error occurred while checking the website |
 
-## Statusi leada
+## Lead statuses
 
-| Status | Značenje |
+| Status | Meaning |
 |---|---|
-| `new` | Nov lead |
-| `contacted` | Uspostavljen prvi kontakt |
-| `qualified` | Lead je kvalifikovan |
-| `proposal_sent` | Poslata ponuda |
-| `won` | Uspesan kraj |
-| `lost` | Izgubljen lead |
-| `on_hold` | Privremeno pauziran |
+| `new` | New lead; the default |
+| `in_progress` | The lead is being worked on |
+| `contacted` | First contact has been made |
+| `qualified` | The lead is qualified |
+| `rejected` | The lead has been rejected |
+| `converted` | The lead has been converted |
 
-## Pravila
+## Rules
 
-- APR podaci se nikada ne prepisuju CRM podacima.
-- CRM lead se kreira i ažurira ručno.
-- Jedna firma može imati najviše jedan CRM lead.
-- `contacted_at` se automatski postavlja kada se `lead_status` promeni
-  u `contacted`, a vrednost još nije postavljena.
-- `website_checked_at` se automatski postavlja kada se ručno menja
-  `website_status`.
-- Website URL se validira i normalizuje pre čuvanja.
-- Brisanje firme briše i povezani CRM lead.
+- APR data is never overwritten by CRM data.
+- A CRM lead is created and updated manually.
+- A company can have at most one CRM lead.
+- `contacted_at` is set automatically when `lead_status` is `contacted`
+  and the value has not been set yet.
+- `CompanyLeadObserver` sets `website_checked_at` automatically when
+  `website_status` changes.
+- Known inconsistency: applying a verified website candidate always sets
+  `website_checked_at` to `now()`, even when `website_status` does not
+  change.
+- The website URL is validated and normalized before it is saved.
+- Deleting a company also deletes the related CRM lead.
 
-## Website URL validacija
+## Website URL validation
 
-Website URL mora biti validan URL.
+The website URL must be a valid URL.
 
-Ako korisnik unese adresu bez protokola, aplikacija je normalizuje
-dodavanjem `https://`.
+If the user enters an address without a protocol, the application
+normalizes it by adding `https://`.
 
-Primeri:
+Examples:
 
-| Unos | Sačuvana vrednost |
+| Input | Stored value |
 |---|---|
-| `firma.rs` | `https://firma.rs` |
-| `www.firma.rs` | `https://www.firma.rs` |
-| `http://firma.rs` | `http://firma.rs` |
-| `https://firma.rs` | `https://firma.rs` |
+| `example.com` | `https://example.com` |
+| `www.example.com` | `https://www.example.com` |
+| `http://example.com` | `http://example.com` |
+| `https://example.com` | `https://example.com` |
 
-Nevalidan URL se odbija validacijom.
+An invalid URL is rejected by validation.
 
-## CRM lista
+Known limitation: normalization only adds `https://` when the protocol is
+missing and does not remove `www.`, so `https://www.example.com` and
+`https://example.com` are stored as different values.
 
-CRM lista je dostupna na `/leads`.
+## CRM list
 
-Podržava:
+The CRM list is available at `/leads`.
 
-- pretragu po nazivu firme;
-- filter po opštini;
-- filter po statusu sajta;
-- filter po statusu leada;
-- sortiranje po nazivu firme, opštini, lead score-u i datumu izmene.
+It supports:
 
-## CRM status u katalogu
+- search by company name or registration number;
+- filtering by website status;
+- filtering by lead status;
+- sorting by lead score (highest or lowest first) or by date of the last
+  change.
 
-Na katalogu firmi postoji filter CRM stanja:
+## CRM status in the catalog
 
-- sve firme;
-- samo firme sa leadom;
-- samo firme bez leada.
+The company catalog has a CRM state filter:
 
-Time se omogućava lakše pronalaženje firmi koje još nisu ušle u CRM
-proces.
+- all companies;
+- only companies with a lead;
+- only companies without a lead.
 
-## Primena potvrđenog website kandidata
+This makes it easier to find companies that have not yet entered the CRM
+process.
 
-Potvrđeni website kandidat iz enrichment sloja može se primeniti u CRM
-samo eksplicitnom korisničkom akcijom.
+## Applying a verified website candidate
 
-Kada korisnik klikne **Primeni u CRM**:
+A verified website candidate from the enrichment layer can be applied to
+the CRM only through an explicit user action.
 
-- ako lead ne postoji, kreira se novi lead;
-- ako lead postoji, ažuriraju se samo `website_url`, `website_status`
-  i `website_checked_at`;
-- `lead_status`, `lead_score`, telefon, e-mail i napomene se ne menjaju;
-- APR podaci se ne menjaju;
-- enrichment zapis ostaje `verified`.
+When the user clicks **Apply to CRM**:
 
-## Pokretanje audita iz enrichment kandidata
+- if no lead exists, a new lead is created;
+- if a lead exists, only `website_url`, `website_status`,
+  and `website_checked_at` are updated;
+- `lead_status`, `lead_score`, phone, email, and notes are not changed;
+- APR data is not changed;
+- the enrichment record remains `verified`.
 
-Za potvrđeni website kandidat, kod firme koja već ima CRM lead, može se
-pokrenuti website audit.
+## Running an audit from an enrichment candidate
 
-Audit se kreira u tabeli `company_website_audits`, a `requested_url` se
-uzima iz potvrđenog enrichment kandidata.
+For a verified website candidate of a company that already has a CRM lead,
+a website audit can be run.
 
-Audit se može pokrenuti samo ako:
+The audit is created in the `company_website_audits` table, and
+`requested_url` is taken from the verified enrichment candidate.
 
-- data point je tipa `website`;
-- data point ima status `verified`;
-- firma ima CRM lead.
+An audit can be run only if:
 
-Pokretanje audita ne menja enrichment zapis niti CRM podatke.
+- the data point is of type `website`;
+- the data point has the status `verified`;
+- the company has a CRM lead.
 
-## Testovi
+Running the audit does not change the enrichment record or the CRM data.
 
-Pokriveni su sledeći slučajevi:
+## Tests
 
-- kreiranje CRM leada;
-- ažuriranje CRM leada;
-- validacija statusa i lead score-a;
-- 1:1 ograničenje nad `company_id`;
-- automatsko postavljanje `contacted_at`;
-- filteri CRM liste;
-- CRM filter na katalogu firmi;
-- URL validacija i normalizacija;
-- automatsko postavljanje `website_checked_at`;
-- kreiranje i ažuriranje website audita;
-- tehnička provera URL-a.
+The following cases are covered:
+
+- creating a CRM lead;
+- updating a CRM lead;
+- status and lead score validation;
+- updating a lead keeps a single `company_leads` row per `company_id`
+  (the unique index itself is not tested directly);
+- automatic setting of `contacted_at`;
+- CRM list filters;
+- the CRM filter in the company catalog;
+- URL validation and normalization;
+- automatic setting of `website_checked_at`;
+- creating and updating website audits;
+- the technical URL check.

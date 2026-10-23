@@ -1,100 +1,102 @@
 # Firma Finder — Architecture Decisions
 
-Ovaj dokument beleži važne arhitektonske odluke i razloge iza njih.
+This document records important architectural decisions and the reasons
+behind them.
 
 ---
 
-## 2026-10-11 — APR i CRM podaci su strogo odvojeni
+## 2026-10-11 — APR and CRM data are strictly separated
 
-### Odluka
+### Decision
 
-Izvorni APR podaci čuvaju se u tabeli `companies`.
+Source APR data is stored in the `companies` table.
 
-Ručni CRM podaci čuvaju se u tabeli `company_leads`.
+Manual CRM data is stored in the `company_leads` table.
 
-### Razlog
+### Reason
 
-APR podaci predstavljaju uvezeni snimak zvaničnog registra i ne smeju se
-mešati sa ručnim beleškama, kontaktima, URL-ovima i prodajnim statusima.
+APR data is an imported snapshot of the official register and must not be
+mixed with manual notes, contacts, URLs, and sales statuses.
 
-CRM podaci se često menjaju, dok APR uvoz može biti ponovljen sa novijim
-presekom podataka.
+CRM data changes often, while the APR import may be repeated with a newer
+data snapshot.
 
-### Posledica
+### Consequences
 
-- APR import ne sme prepisivati CRM podatke.
-- CRM forme i budući audit podaci ne menjaju tabelu `companies`.
-- Buduće website provere čuvaju se u posebnoj tabeli, a ne u `companies`.
+- The APR import must not overwrite CRM data.
+- CRM forms and future audit data do not change the `companies` table.
+- Future website checks are stored in a separate table, not in `companies`.
 
 ---
 
-## 2026-10-11 — Company i CompanyLead imaju 1:1 odnos
+## 2026-10-11 — Company and CompanyLead have a 1:1 relationship
 
-### Odluka
+### Decision
 
-Jedna firma može imati najviše jedan aktivni CRM lead zapis.
+A company can have at most one CRM lead.
 
-Relacija je definisana kao:
+The relationship is defined as:
 
 ```text
 Company hasOne CompanyLead
 CompanyLead belongsTo Company
 ```
 
-Baza garantuje pravilo kroz jedinstveni indeks:
+The database enforces the rule with a unique index:
 
 ```text
 UNIQUE(company_leads.company_id)
 ```
 
-### Razlog
+### Reason
 
-Aplikacija trenutno vodi jedan CRM karton po firmi.
+The application currently keeps one CRM record per company.
 
-Istorija provera sajta i kasnije istorija komunikacije nisu isto što i
-trenutni CRM karton i ne treba ih dodavati kao dodatne lead zapise.
+The website check history, and later the communication history, are not the
+same thing as the current CRM record and should not be added as additional
+lead records.
 
-### Posledica
+### Consequences
 
-- Za postojeći lead koristi se ažuriranje, a ne kreiranje drugog reda.
-- Budući auditi sajta dobijaju posebnu tabelu sa relacijom 1:N prema firmi
-  ili leadu.
-- Buduća komunikacija takođe može dobiti zasebnu istorijsku tabelu.
+- An existing lead is updated rather than a second row being created.
+- Future website audits get a separate table with a 1:N relationship to the
+  company or the lead.
+- Future communication can also get its own history table.
 
 ---
 
-## 2026-10-11 — Datum prvog kontakta je istorijski podatak
+## 2026-10-11 — The first contact date is historical data
 
-### Odluka
+### Decision
 
-Polje `contacted_at` automatski se popunjava kada lead prvi put ima
-status `contacted`.
+The `contacted_at` field is filled in automatically when a lead first has
+the status `contacted`.
 
-Kada se status kasnije promeni u `qualified`, `rejected` ili `converted`,
-datum prvog kontakta se ne briše i ne menja.
+When the status later changes to `qualified`, `rejected`, or `converted`,
+the first contact date is neither cleared nor changed.
 
-### Razlog
+### Reason
 
-Datum prvog kontakta predstavlja činjenicu iz istorije odnosa sa firmom,
-a ne trenutni status leada.
+The first contact date is a fact from the history of the relationship with
+the company, not the current status of the lead.
 
-### Posledica
+### Consequences
 
-`CompanyLeadObserver` postavlja datum samo kada važi:
+`CompanyLeadObserver` sets the date only when:
 
 ```text
 lead_status = contacted
-i
-contacted_at je prazan
+and
+contacted_at is empty
 ```
 
 ---
 
-## 2026-10-11 — Statusi se čuvaju kao stabilni interni ključevi
+## 2026-10-11 — Statuses are stored as stable internal keys
 
-### Odluka
+### Decision
 
-U bazi se čuvaju stabilne engleske vrednosti kao što su:
+The database stores stable English values such as:
 
 ```text
 unknown
@@ -108,283 +110,307 @@ rejected
 converted
 ```
 
-U interfejsu se prikazuju srpski nazivi kroz konstante modela.
+The interface shows display labels defined in model constants.
 
-### Razlog
+### Reason
 
-Interne vrednosti ostaju stabilne ako se kasnije promeni jezik interfejsa
-ili formulacija oznake.
+The internal values stay stable if the interface language or the wording
+of a label changes later.
 
-### Posledica
+### Consequences
 
-- Validacija koristi `Rule::in(array_keys(...))`.
-- Blade prikazi koriste konstante za korisnički naziv statusa.
-- Filteri i budući API ne zavise od prikazanog teksta.
+- Validation uses `Rule::in(array_keys(...))`.
+- Blade views use the constants for the user-facing status label.
+- Filters and a future API do not depend on the displayed text.
 
 ---
 
-## 2026-10-11 — Website audit je zasebna istorijska celina
+## 2026-10-11 — Website audit is a separate historical entity
 
-### Odluka
+### Decision
 
-Budući website audit neće biti samo nekoliko novih polja na `company_leads`.
+The future website audit will not be just a few new fields on
+`company_leads`.
 
-Koristiće se zasebna tabela, planiranog naziva `company_website_audits`.
+It will use a separate table, with the planned name
+`company_website_audits`.
 
-### Razlog
+### Reason
 
-Sajt može promeniti URL, tehničko stanje ili dizajn. Potrebno je sačuvati
-istoriju provera, tehničke rezultate, screenshotove, AI nalaze i ručne
-recenzije, bez prepisivanja starijih nalaza.
+A website can change its URL, technical state, or design. The history of
+checks, technical results, screenshots, AI findings, and manual reviews
+needs to be kept without overwriting older findings.
 
-### Posledica
+### Consequences
 
-Planirana relacija će biti približno:
+The planned relationship will be roughly:
 
 ```text
 CompanyLead hasMany CompanyWebsiteAudit
 CompanyWebsiteAudit belongsTo CompanyLead
 ```
 
-Tačan model se potvrđuje pre implementacije.
+The exact model is confirmed before implementation.
 
 ---
 
-## 2026-10-11 — AI je pomoćnik, ne automatski prodajni agent
+## 2026-10-11 — AI is an assistant, not an automated sales agent
 
-### Odluka
+### Decision
 
-AI može analizirati tehničke nalaze i screenshotove, predložiti tip usluge
-i generisati nacrt poruke ili ponude.
+AI may analyze technical findings and screenshots, suggest a type of
+service, and generate a draft message or offer.
 
-AI neće automatski slati e-mailove, poruke ili ponude.
+AI will not send emails, messages, or offers automatically.
 
-### Razlog
+### Reason
 
-AI procene mogu biti nepotpune ili netačne. Svaka eksterno poslata poruka
-mora biti zasnovana na stvarnim dokazima i ručno odobrena.
+AI assessments can be incomplete or wrong. Every message sent externally
+must be based on real evidence and manually approved.
 
-### Posledica
+### Consequences
 
-Budući tok rada će biti:
+The future workflow will be:
 
 ```text
-Tehnički audit + screenshotovi
-→ AI strukturisana procena
-→ Ručna provera nalaza
-→ Nacrt ponude
-→ Ručno odobrenje
-→ Slanje
+Technical audit + screenshots
+→ Structured AI assessment
+→ Manual review of findings
+→ Draft offer
+→ Manual approval
+→ Sending
 ```
 
 ---
 
-## 2026-10-14 — Website URL se validira i normalizuje
+## 2026-10-14 — Website URLs are validated and normalized
 
-### Odluka
+### Decision
 
-Korisnički unet website URL se validira pre čuvanja.
+A website URL entered by the user is validated before it is saved.
 
-Ako URL nema protokol, automatski se dodaje `https://`.
+If the URL has no protocol, `https://` is added automatically.
 
-Ako URL već ima `http://` ili `https://`, protokol ostaje nepromenjen.
+If the URL already starts with `http://` or `https://`, the protocol is
+left unchanged.
 
-URL bez validnog domena se ne čuva.
+A URL without a valid domain is not saved.
 
-### Razlog
+### Reason
 
-Normalizacija sprečava nekonzistentne zapise poput `example.com`,
-`www.example.com` i `https://example.com` za isti sajt.
+Normalization means that a URL entered without a protocol, such as
+`example.com`, is stored as `https://example.com` instead of in a
+different form.
 
-Zadržavanje postojećeg protokola je važno jer neki sajtovi možda još uvek
-nisu dostupni preko HTTPS-a.
+Keeping the existing protocol matters because some websites may still not
+be available over HTTPS.
 
-### Posledica
+### Consequences
 
-- URL se čuva u normalizovanom obliku.
-- Validacija proverava da li vrednost predstavlja validan URL.
-- Neispravan URL se odbacuje pre kreiranja ili ažuriranja leada.
+- The URL is stored in normalized form.
+- Validation checks that the value is a valid URL.
+- An invalid URL is rejected before a lead is created or updated.
 
----
-
-## 2026-10-14 — Datum provere sajta se ažurira automatski
-
-### Odluka
-
-Polje `website_checked_at` automatski se postavlja kada se kreira lead
-ili kada se promeni `website_status`.
-
-### Razlog
-
-Datum provere predstavlja trenutak kada je korisnik potvrdio ili promenio
-trenutno stanje sajta, a ne trenutak kreiranja CRM zapisa.
-
-### Posledica
-
-- `website_checked_at` ne unosi korisnik ručno.
-- Datum se ažurira samo pri promeni statusa sajta.
-- Prikaz datuma poslednje provere daje kontekst za ručnu procenu sajta.
+Known limitation: normalization only adds `https://` when the protocol is
+missing and does not remove `www.`, so `https://www.example.com` and
+`https://example.com` are stored as different values.
 
 ---
 
-## 2026-10-14 — Website enrichment je odvojen od APR i CRM podataka
+## 2026-10-14 — The website check date is updated automatically
 
-### Odluka
+### Decision
 
-APR JSON izvor ne sadrži website URL. Website i drugi kontakt podaci
-prikupljaju se kroz zaseban enrichment sloj.
+The `website_checked_at` field is set automatically when a lead is created
+or when `website_status` changes.
 
-Enrichment podaci čuvaju se u tabeli `company_data_points`.
+### Reason
 
-Svaki zapis ima:
+The check date is the moment when the user confirmed or changed the
+current state of the website, not the moment the CRM record was created.
 
-- izvor podataka;
-- identitet match;
-- licencni status;
+### Consequences
+
+- `website_checked_at` is not entered manually by the user.
+- `CompanyLeadObserver` updates the date only when `website_status`
+  changes.
+- `applyWebsiteDataPointToLead` always sets the date to `now()` when a
+  verified website candidate is applied to the CRM.
+- Showing the date of the last check gives context for the manual website
+  assessment.
+
+Known inconsistency: applying a verified website candidate updates
+`website_checked_at` even when `website_status` does not change.
+
+---
+
+## 2026-10-14 — Website enrichment is separate from APR and CRM data
+
+### Decision
+
+The APR JSON source does not contain a website URL. Websites and other
+contact details are collected through a separate enrichment layer.
+
+Enrichment data is stored in the `company_data_points` table.
+
+Each record has:
+
+- data source;
+- identity match;
+- license status;
 - confidence;
-- status potvrde.
+- verification status.
 
-### Razlog
+### Reason
 
-APR daje pouzdan identitet firme, ali ne website. CompanyWall, OSM,
-Wikidata i budući izvori mogu dati različite kandidate, pa je potrebno
-znati odakle podatak dolazi, da li je dozvoljen i da li je potvrđen.
+APR provides a reliable company identity, but not a website. CompanyWall,
+OSM, Wikidata, and future sources may return different candidates, so it
+is necessary to know where a value comes from, whether its use is
+permitted, and whether it has been verified.
 
-### Posledica
+### Consequences
 
-- APR podaci se ne menjaju enrichment podacima.
-- CompanyWall, OSM, Wikidata i budući izvori koriste isti model.
-- Automatska potvrda je dozvoljena samo za jaka poklapanja i dozvoljene izvore.
-- Sporne vrednosti ostaju kandidati za ručni pregled.
-- Lighthouse i screenshotovi rade samo nad potvrđenim website URL-om.
-
----
-
-## 2026-10-14 — CompanyWall se ne integriše bez pisane potvrde uslova
-
-### Odluka
-
-CompanyWall se ne koristi za automatsko prikupljanje podataka dok ne budu
-pisano potvrđeni:
-
-- da li njihov Web API ili izvoz sadrži website URL;
-- kako se firma povezuje preko MB/PIB;
-- format JSON/CSV odgovora;
-- cene, paketi, kvote i rate limiti;
-- uslovi čuvanja podataka u internom CRM-u;
-- uslovi i dozvola za scraping, ako se on koristi.
-
-### Razlog
-
-CompanyWall je komercijalna bonitetna platforma. Njihovi uslovi korišćenja
-zabranjuju automatizovano prikupljanje podataka bez saglasnosti.
-
-### Posledica
-
-- Ne pravi se sopstveni scraper bez pisane saglasnosti.
-- CompanyWall podaci, kada budu dostupni, ulaze kao `companywall` izvor.
-- Website URL se prvo čuva kao kandidat.
-- Automatska potvrda je moguća samo ako je licencni status dozvoljen i
-  MB/PIB se pouzdano poklapa sa APR firmom.
+- APR data is not changed by enrichment data.
+- CompanyWall, OSM, Wikidata, and future sources use the same model.
+- Planned: when automatic verification is built, it will be allowed only
+  for strong matches and permitted sources. Verification is currently
+  manual only, through `verify()`.
+- Disputed values remain candidates for manual review.
+- Planned: Lighthouse and screenshots will run only against a verified
+  website URL. Neither is implemented yet, and the manual audit form
+  currently accepts any URL.
 
 ---
 
-## 2026-10-14 — APR sync koristi snapshot i upsert
+## 2026-10-14 — CompanyWall is not integrated without written confirmation of terms
 
-### Odluka
+### Decision
 
-APR podaci se preuzimaju preko APR Open Data API-ja u lokalni JSON
-snapshot, a zatim se uvoze u tabelu `companies` kroz `apr:import`.
+CompanyWall is not used for automated data collection until the following
+are confirmed in writing:
 
-Import koristi upsert po matičnom broju firme.
+- whether their Web API or export includes the website URL;
+- how a company is matched by registration number (MB) or tax ID (PIB);
+- the JSON/CSV response format;
+- prices, plans, quotas, and rate limits;
+- the terms for storing the data in an internal CRM;
+- the terms of, and permission for, scraping, if it is used.
 
-### Razlog
+### Reason
 
-Odvojeno čuvanje snapshot-a omogućava ponovljiv uvoz, lakše otklanjanje
-grešaka i testiranje bez ponovnog pozivanja API-ja.
+CompanyWall is a commercial credit-rating platform. Its terms of use must
+be reviewed, and automated data collection requires their written
+permission. No integration is built until that is confirmed.
 
-Upsert po matičnom broju sprečava dupliranje firmi pri ponovljenom
-uvozu istog preseka.
+### Consequences
 
-### Posledica
-
-- `apr:sync` ne upisuje direktno u bazu.
-- `apr:import` je jedina faza koja menja tabelu `companies`.
-- APR import ažurira samo izvorne APR podatke.
-- CRM, enrichment i audit podaci ostaju netaknuti.
-- `source_snapshot_date` jasno označava APR presek svakog zapisa.
-- `imported_at` beleži vreme poslednjeg lokalnog uvoza.
-
----
-
-## 2026-10-14 — APR sync ne briše firme automatski
-
-### Odluka
-
-APR sync ne briše firme koje nisu prisutne u novom API snapshot-u.
-
-### Razlog
-
-Nestanak firme iz jednog preseka ne mora automatski značiti da lokalni
-CRM karton, istorija rada ili audit podaci više nisu relevantni.
-
-### Posledica
-
-- Lokalni broj firmi može biti veći od broja zapisa u novom snapshot-u.
-- Eventualno označavanje neaktivnih ili uklonjenih firmi biće zasebna
-  odluka i zasebna migracija.
-- CRM podaci se ne brišu kao posledica APR sync-a.
+- No in-house scraper is built without written permission.
+- CompanyWall data, once available, enters as the `companywall` source.
+- A website URL is first stored as a candidate.
+- Planned: when automatic verification is built, it will be allowed only
+  if the license status is permitted and the MB/PIB reliably matches an
+  APR company. Verification is currently manual only, through `verify()`.
 
 ---
 
-## 2026-10-14 — Potvrđeni enrichment URL se u CRM primenjuje ručno
+## 2026-10-14 — APR sync uses a snapshot and upsert
 
-### Odluka
+### Decision
 
-Potvrđeni website kandidat iz `company_data_points` može se primeniti u CRM
-samo eksplicitnom korisničkom akcijom.
+APR data is downloaded through the APR Open Data API into a local JSON
+snapshot and then imported into the `companies` table with `apr:import`.
 
-### Razlog
+The import upserts by company registration number.
 
-Enrichment izvor može da ponudi URL, ali ne može sam da odluči da li taj URL
-treba da zameni postojeći CRM podatak.
+### Reason
 
-### Posledica
+Storing the snapshot separately makes the import repeatable and makes
+debugging and testing possible without calling the API again.
 
-- Primenom se ažuriraju samo `website_url`, `website_status`
-  i `website_checked_at`.
-- `lead_status`, `lead_score`, telefon, e-mail i napomene se ne menjaju.
-- APR podaci se ne menjaju.
-- Enrichment zapis ostaje `verified`.
+Upserting by registration number prevents duplicate companies when the
+same snapshot is imported again.
 
----
+### Consequences
 
-## 2026-10-14 — Website audit iz enrichment kandidata zahteva CRM lead
-
-### Odluka
-
-Website audit iz potvrđenog enrichment kandidata može se pokrenuti samo ako
-firma već ima CRM lead.
-
-### Razlog
-
-Audit pripada CRM leadu i postojećem toku provere sajta.
-
-### Posledica
-
-- Audit se kreira u postojećoj tabeli `company_website_audits`.
-- `requested_url` se uzima iz potvrđenog enrichment kandidata.
-- Enrichment zapis se ne menja pokretanjem audita.
-- Automatska verifikacija identiteta firme još uvek nije implementirana.
+- `apr:sync` does not write directly to the database.
+- `apr:import` is the only step that changes the `companies` table.
+- The APR import updates only source APR data.
+- CRM, enrichment, and audit data remain untouched.
+- `source_snapshot_date` clearly marks the APR snapshot of each record.
+- `imported_at` records the time of the last local import.
 
 ---
 
-## Pravilo za buduće izmene šeme
+## 2026-10-14 — APR sync does not delete companies automatically
 
-Kada je Laravel migracija već izvršena, ne menja se postojeći migration
-fajl.
+### Decision
 
-Svaka promena postojeće tabele radi se novom migracijom.
+APR sync does not delete companies that are missing from the new API
+snapshot.
 
-Razlog: lokalne i buduće baze moraju moći konzistentno da pređu kroz celu
-istoriju šeme.
+### Reason
+
+A company disappearing from one snapshot does not automatically mean that
+the local CRM record, work history, or audit data are no longer relevant.
+
+### Consequences
+
+- The local number of companies may be higher than the number of records
+  in the new snapshot.
+- Any marking of inactive or removed companies will be a separate decision
+  and a separate migration.
+- CRM data is not deleted as a result of APR sync.
+
+---
+
+## 2026-10-14 — A verified enrichment URL is applied to the CRM manually
+
+### Decision
+
+A verified website candidate from `company_data_points` can be applied to
+the CRM only through an explicit user action.
+
+### Reason
+
+An enrichment source can offer a URL, but it cannot decide on its own
+whether that URL should replace existing CRM data.
+
+### Consequences
+
+- Applying it updates only `website_url`, `website_status`,
+  and `website_checked_at`.
+- `lead_status`, `lead_score`, phone, email, and notes are not changed.
+- APR data is not changed.
+- The enrichment record remains `verified`.
+
+---
+
+## 2026-10-14 — A website audit from an enrichment candidate requires a CRM lead
+
+### Decision
+
+A website audit from a verified enrichment candidate can be run only if
+the company already has a CRM lead.
+
+### Reason
+
+The audit belongs to the CRM lead and the existing website check flow.
+
+### Consequences
+
+- The audit is created in the existing `company_website_audits` table.
+- `requested_url` is taken from the verified enrichment candidate.
+- Running the audit does not change the enrichment record.
+- Automatic verification of company identity is not implemented yet.
+
+---
+
+## Rule for future schema changes
+
+Once a Laravel migration has been run, the existing migration file is not
+changed.
+
+Every change to an existing table is made with a new migration.
+
+Reason: local and future databases must be able to go through the entire
+schema history consistently.

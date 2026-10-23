@@ -1,46 +1,47 @@
 # Firma Finder — Project Status
 
-## Poslednje ažuriranje
+## Last updated
 
 2026-10-14
 
-## Svrha projekta
+## Project purpose
 
-Firma Finder je lokalna Laravel aplikacija za pronalaženje, pregled i
-kvalifikaciju privrednih društava iz APR registra Srbije.
+Firma Finder is a local Laravel application for finding, reviewing, and
+qualifying companies from the Serbian Business Registers Agency (APR)
+register.
 
-Primarni cilj je organizovanje prodajnog procesa za usluge izrade,
-redizajna i unapređenja poslovnih sajtova.
+The primary goal is to organize the sales process for business website
+development, redesign, and improvement services.
 
-## Tehnologija
+## Technology
 
 - Laravel
-- PHP 8.5
+- PHP 8.3 or newer (developed on 8.5)
 - SQLite
 - Blade
-- Lokalni razvoj: `php8.5 artisan serve`
+- Local development: `php artisan serve`
 
-## Podaci i arhitektura
+## Data and architecture
 
-### APR podaci
+### APR data
 
-Tabela `companies` čuva uvezene izvorne APR podatke:
+The `companies` table stores imported source APR data:
 
-- matični broj;
-- naziv firme;
-- opštinu;
+- registration number;
+- company name;
+- municipality;
 - status;
-- pravnu formu;
-- šifru delatnosti;
-- datum osnivanja;
-- datum APR preseka;
-- datum lokalnog uvoza.
+- legal form;
+- activity code;
+- date of incorporation;
+- APR snapshot date;
+- local import date.
 
-APR podaci se nikada ne menjaju CRM, enrichment ili audit podacima.
+APR data is never changed by CRM, enrichment, or audit data.
 
-### CRM podaci
+### CRM data
 
-Tabela `company_leads` čuva ručne CRM podatke:
+The `company_leads` table stores manual CRM data:
 
 - `website_url`;
 - `website_status`;
@@ -52,52 +53,52 @@ Tabela `company_leads` čuva ručne CRM podatke:
 - `website_checked_at`;
 - `contacted_at`.
 
-Veza `Company → CompanyLead` je striktno 1:1 i zaštićena je
-jedinstvenim indeksom nad `company_leads.company_id`.
+The `Company → CompanyLead` relationship is strictly 1:1 and is protected
+by a unique index on `company_leads.company_id`.
 
-### Website audit podaci
+### Website audit data
 
-Tabela `company_website_audits` čuva istoriju ručnih tehničkih provera
-sajta za CRM leadove.
+The `company_website_audits` table stores the history of manual technical
+website checks for CRM leads.
 
-Veza je:
+The relationship is:
 
 ```text
 CompanyLead hasMany CompanyWebsiteAudit
 CompanyWebsiteAudit belongsTo CompanyLead
 ```
 
-Jedan CRM lead može imati više website audita. Brisanje leada briše i
-sve povezane audite kroz `cascadeOnDelete`.
+A single CRM lead can have multiple website audits. Deleting a lead also
+deletes all related audits through `cascadeOnDelete`.
 
-APR podaci u `companies` se nikada ne menjaju audit podacima.
+APR data in `companies` is never changed by audit data.
 
-### Company enrichment podaci
+### Company enrichment data
 
-Tabela `company_data_points` čuva dodatne podatke o firmama koji dolaze
-iz ručnog unosa ili budućih enrichment izvora.
+The `company_data_points` table stores additional company data that comes
+from manual entry or future enrichment sources.
 
-Veza je:
+The relationship is:
 
 ```text
 Company hasMany CompanyDataPoint
 CompanyDataPoint belongsTo Company
 ```
 
-`company_id` je nullable jer enrichment zapis može biti `unmatched`
-kada se ne može pouzdano povezati sa APR firmom.
+`company_id` is nullable because an enrichment record can be `unmatched`
+when it cannot be reliably linked to an APR company.
 
-Brisanje APR firme briše i sve njene enrichment zapise kroz
+Deleting an APR company also deletes all of its enrichment records through
 `cascadeOnDelete`.
 
-Podržani tipovi podataka su:
+The supported data types are:
 
 - `website`;
 - `email`;
 - `phone`;
 - `address`.
 
-Podržani izvori su:
+The supported sources are:
 
 - `manual`;
 - `companywall`;
@@ -106,7 +107,7 @@ Podržani izvori su:
 - `google_places`;
 - `apr`.
 
-Podržani statusi zapisa su:
+The supported record statuses are:
 
 - `candidate`;
 - `verified`;
@@ -114,233 +115,253 @@ Podržani statusi zapisa su:
 - `unmatched`;
 - `needs_review`.
 
-APR podaci se nikada ne menjaju enrichment podacima.
+APR data is never changed by enrichment data.
 
-## Trenutno završeno
+## Currently completed
 
-### APR katalog
+### APR catalog
 
-- Lokalno je uvezen APR katalog sa 125.054 firmi.
-- Lista firmi je dostupna na `/companies`.
-- Postoje pretraga i filteri po:
-    - nazivu firme;
-    - matičnom broju;
-    - opštini;
-    - šifri delatnosti;
-    - APR statusu.
-- Lista koristi paginaciju od 50 firmi po stranici.
-- Detalj firme je dostupan na:
+- An APR catalog of 134,374 companies (snapshot `2026-09-30`) has been
+  imported locally.
+- The company list is available at `/companies`.
+- Search and filters are available by:
+    - company name;
+    - registration number;
+    - municipality;
+    - activity code;
+    - APR status.
+- The list is paginated at 50 companies per page.
+- The company detail page is available at:
   `/companies/{registration_number}`.
 
 ### CRM
 
-- Kreirana je tabela `company_leads`.
-- Kreiran je `CompanyLead` model.
-- Dodate su Eloquent relacije:
+- The `company_leads` table has been created.
+- The `CompanyLead` model has been created.
+- Eloquent relationships have been added:
     - `Company::lead()` (`hasOne`);
     - `CompanyLead::company()` (`belongsTo`).
-- Dodate su konstante za:
-    - status sajta;
-    - status leada.
-- Na detalju firme postoji CRM forma za:
-    - URL sajta;
-    - status sajta;
-    - telefon;
-    - e-mail;
-    - status leada;
-    - lead score od 0 do 100;
-    - napomene.
-- Postoje rute za kreiranje i izmenu CRM zapisa:
+- Constants have been added for:
+    - website status;
+    - lead status.
+- The company detail page has a CRM form for:
+    - website URL;
+    - website status;
+    - phone;
+    - email;
+    - lead status;
+    - lead score from 0 to 100;
+    - notes.
+- There are routes for creating and updating a CRM record:
     - `POST /companies/{registration_number}/lead`;
     - `PUT /companies/{registration_number}/lead`.
-- CRM lista je dostupna na `/leads`.
-- CRM lista podržava:
-    - pretragu po nazivu i matičnom broju;
-    - filtriranje po statusu leada;
-    - filtriranje po statusu sajta;
-    - sortiranje po score-u ili poslednjoj izmeni.
-- Glavni katalog na `/companies` prikazuje CRM kolonu.
-- CRM status vodi na detalj firme radi izmene.
-- CRM filter na katalogu firmi podržava:
-    - sve firme;
-    - samo firme sa leadom;
-    - samo firme bez leada.
-- Neispravna vrednost `lead_filter` se tretira kao `all`.
-- Website URL se validira i normalizuje:
-    - URL bez protokola dobija `https://`;
-    - postojeći `http://` ili `https://` protokol ostaje nepromenjen;
-    - URL bez validnog domena se odbacuje.
-- `website_checked_at` se automatski postavlja pri kreiranju leada i
-  promeni `website_status`.
-- Na CRM kartonu firme prikazuje se datum poslednje provere sajta.
-- Postoje feature testovi za CRM filter, CRUD, observer, URL validaciju
-  i `website_checked_at`.
+- The CRM list is available at `/leads`.
+- The CRM list supports:
+    - search by name and registration number;
+    - filtering by lead status;
+    - filtering by website status;
+    - sorting by score or by last update.
+- The main catalog at `/companies` shows a CRM column.
+- The CRM status links to the company detail page for editing.
+- The CRM filter in the company catalog supports:
+    - all companies;
+    - only companies with a lead;
+    - only companies without a lead.
+- An invalid `lead_filter` value is treated as `all`.
+- The website URL is validated and normalized:
+    - a URL without a protocol gets `https://`;
+    - an existing `http://` or `https://` protocol is left unchanged;
+    - a URL without a valid domain is rejected.
+- `CompanyLeadObserver` sets `website_checked_at` automatically when a
+  lead is created and when `website_status` changes.
+  `applyWebsiteDataPointToLead` always sets it to `now()`.
+- The company's CRM record shows the date of the last website check.
+- There are feature tests for the CRM filter, CRUD, the observer, URL
+  validation, and `website_checked_at`.
 
-### Datum prvog kontakta
+### First contact date
 
-`CompanyLeadObserver` automatski upisuje `contacted_at` kada lead
-prvi put dobije status `contacted`.
+`CompanyLeadObserver` automatically sets `contacted_at` when a lead first
+gets the status `contacted`.
 
-Datum prvog kontakta ostaje sačuvan kada se status kasnije promeni,
-na primer iz `contacted` u `qualified`.
+The first contact date is kept when the status later changes, for example
+from `contacted` to `qualified`.
 
-### Website audit osnova
+### Website audit foundation
 
-- Kreirana je tabela `company_website_audits`.
-- Kreiran je `CompanyWebsiteAudit` model.
-- Dodate su Eloquent relacije:
+- The `company_website_audits` table has been created.
+- The `CompanyWebsiteAudit` model has been created.
+- Eloquent relationships have been added:
     - `CompanyLead::websiteAudits()` (`hasMany`);
     - `CompanyWebsiteAudit::companyLead()` (`belongsTo`).
-- Jedan CRM lead može imati više website audita.
-- Audit zapisi se brišu zajedno sa leadom kroz `cascadeOnDelete`.
-- Podržani statusi audita su:
+- A single CRM lead can have multiple website audits.
+- Audit records are deleted together with the lead through
+  `cascadeOnDelete`.
+- The supported audit statuses are:
     - `pending`;
     - `completed`;
     - `failed`.
-- Na detalju firme postoji sekcija **Website audit istorija**.
-- Korisnik može ručno da doda website audit kroz formu na detalju firme.
-- Audit čuva:
-    - URL provere;
-    - krajnji URL;
-    - HTTP status;
-    - dostupnost sajta;
+- The company detail page has a **Website audit history** section.
+- The user can manually add a website audit through a form on the company
+  detail page.
+- An audit stores:
+    - the URL to check;
+    - the final URL;
+    - the HTTP status;
+    - website reachability;
     - HTTPS status;
-    - broj redirekcija;
-    - vreme odgovora;
-    - naslov stranice;
-    - meta description;
-    - napomene;
-    - grešku, ako je bilo;
-    - datum početka i završetka provere.
-- Website audit se trenutno unosi ručno.
-- Dodat je `WebsiteAuditService` za ručno pokretanje tehničke provere sajta.
-- Tehnička provera čuva HTTP status, krajnji URL, HTTPS status, broj
-  redirekcija, vreme odgovora, naslov stranice i meta description.
-- Ako sajt nije dostupan ili provera uspe, audit dobija status `failed`
-  i čuva se razlog greške.
-- Na detalju firme postoji dugme **Pokreni tehničku proveru** za svaki
-  postojeći audit.
-- Postoje feature testovi za:
-    - kreiranje audita za lead;
-    - relaciju lead → audits;
-    - više audita za isti lead;
-    - cascade brisanje audita;
-    - validaciju statusa audita;
-    - ručno kreiranje audita kroz UI;
-    - odbijanje nevalidnog URL-a i statusa;
-    - sprečavanje kreiranja audita bez CRM leada;
-    - uspešnu tehničku proveru URL-a;
-    - neuspešnu tehničku proveru kada sajt nije dostupan;
-    - tehničku proveru kada URL nije definisan;
-    - pokretanje tehničke provere kroz UI.
+    - a redirect flag (`redirect_count`, 0 or 1);
+    - the response time;
+    - the page title;
+    - the meta description;
+    - notes;
+    - the error, if there was one;
+    - the start and end date of the check.
+- Website audits are created manually through the form on the company
+  detail page, or from a verified enrichment candidate through the
+  `data-points.run-audit` route.
+- `WebsiteAuditService` has been added for running a technical website
+  check manually.
+- The technical check stores the HTTP status, final URL, HTTPS status,
+  redirect flag, response time, page title, and meta description.
+- Note: `redirect_count` is 1 whenever the final URL differs from the
+  requested URL, so a difference such as a trailing slash also gives 1.
+- An audit gets the status `failed` only when the connection fails or an
+  exception is thrown; the reason for the error is stored.
+- A website that answers with an HTTP error gets the status `completed`
+  with `is_reachable = false`.
+- The company detail page has a **Run technical check** button for each
+  existing audit.
+- There are feature tests for:
+    - creating an audit for a lead;
+    - the lead → audits relationship;
+    - multiple audits for the same lead;
+    - cascade deletion of audits;
+    - audit status validation;
+    - manual creation of an audit through the UI;
+    - rejection of an invalid URL and status;
+    - preventing audit creation without a CRM lead;
+    - a successful technical URL check;
+    - a failed technical check when the website is unreachable;
+    - a technical check when no URL is defined;
+    - running the technical check through the UI.
 
 ### Company enrichment
 
-- Kreirana je tabela `company_data_points`.
-- Kreiran je `CompanyDataPoint` model.
-- Dodata je relacija `Company hasMany CompanyDataPoint`.
-- `company_id` je nullable i koristi `cascadeOnDelete`.
-- Podržani tipovi podataka su `website`, `email`, `phone` i `address`.
-- Podržani izvori su `manual`, `companywall`, `openstreetmap`, `wikidata`,
-  `google_places` i `apr`.
-- Podržani nivoi poverenja su `high`, `medium` i `low`.
-- Podržani licencni statusi su `allowed`, `restricted`, `forbidden`
-  i `unknown`.
-- Podržani statusi zapisa su `candidate`, `verified`, `rejected`,
-  `unmatched` i `needs_review`.
-- Na detalju firme postoji sekcija **Enrichment kandidati**.
-- Korisnik može ručno da doda website, e-mail, telefon ili adresu
-  kao kandidata.
-- Website URL se normalizuje i validira pre čuvanja.
-- E-mail adresa se validira pre čuvanja.
-- Korisnik može ručno da potvrdi, odbije ili označi kandidata za pregled.
-- Potvrđeni website kandidat može se eksplicitno primeniti u CRM.
-- Primenom u CRM kreira se novi lead ako ne postoji ili se ažurira
-  postojeći lead.
-- Primenom u CRM menjaju se samo `website_url`, `website_status`
-  i `website_checked_at`.
-- `lead_status`, `lead_score`, telefon, e-mail i napomene se ne menjaju
-  automatski.
-- Za potvrđen website kandidat kod firme koja ima CRM lead može se
-  pokrenuti website audit.
-- Audit koristi postojeći `WebsiteAuditService` i čuva se u postojećoj
-  `company_website_audits` tabeli.
-- CompanyWall, OSM, Wikidata i Google Places još uvek nisu integrisani.
-- Nema automatske verifikacije identiteta firme niti automatske potvrde
-  URL-a.
+- The `company_data_points` table has been created.
+- The `CompanyDataPoint` model has been created.
+- The `Company hasMany CompanyDataPoint` relationship has been added.
+- `company_id` is nullable and uses `cascadeOnDelete`.
+- The supported data types are `website`, `email`, `phone`, and `address`.
+- The supported sources are `manual`, `companywall`, `openstreetmap`,
+  `wikidata`, `google_places`, and `apr`.
+- The supported confidence levels are `high`, `medium`, and `low`.
+- The supported license statuses are `allowed`, `restricted`, `forbidden`,
+  and `unknown`.
+- The supported record statuses are `candidate`, `verified`, `rejected`,
+  `unmatched`, and `needs_review`.
+- The company detail page has an **Enrichment candidates** section.
+- The user can manually add a website, email, phone number, or address as
+  a candidate.
+- A website URL is normalized and validated before it is saved.
+- An email address is validated before it is saved.
+- The user can manually verify or reject a candidate, or flag it for
+  review.
+- A verified website candidate can be explicitly applied to the CRM.
+- Applying it to the CRM creates a new lead if none exists, or updates the
+  existing lead.
+- Applying it to the CRM changes only `website_url`, `website_status`,
+  and `website_checked_at`.
+- `lead_status`, `lead_score`, phone, email, and notes are not changed
+  automatically.
+- For a verified website candidate of a company that has a CRM lead, a
+  website audit can be run.
+- The audit uses the existing `WebsiteAuditService` and is stored in the
+  existing `company_website_audits` table.
+- CompanyWall, OSM, Wikidata, and Google Places are not integrated yet.
+- There is no automatic verification of company identity and no automatic
+  URL verification.
 
-## Trenutni testni zapisi
+## Current test records
 
-Lokalno testiranje koristi zapis firme iz APR registra. Identitet firme
-u ovom dokumentu zamenjen je neutralnim primerom. Navedeni CRM status,
-score i datum kontakta služe isključivo za testiranje aplikacije i ne
-predstavljaju stvarno kontaktiranje niti poslovni odnos.
+Local testing uses a company record from the APR register. The company's
+identity has been replaced with a neutral example in this document. The
+CRM status, score, and contact date listed here are used only for testing
+the application and do not represent actual contact or a business
+relationship.
 
-- Firma: Primer firme
-- Matični broj: `[placeholder]`
+- Company: Example company
+- Registration number: `[placeholder]`
 - Website URL: `https://example.com`
 - Website status: `active`
 - Lead status: `qualified`
 - Lead score: `10`
-- Datum prvog kontakta: `[testni datum]`
+- First contact date: `[test date]`
 
-Za ovaj lead postoje ručni testni website audit zapisi koji služe za
-proveru prikaza istorije audita, UI forme i tehničke provere sajta.
+This lead has manual test website audit records used to check the audit
+history display, the UI form, and the technical website check.
 
-Postoje i ručni enrichment testni zapisi:
+There are also manual enrichment test records:
 
-- `https://example.com` kao `verified` website kandidat;
-- `https://example.com` kao `candidate` website kandidat;
-- `https://example.org` kao `rejected` website kandidat.
+- `https://example.com` as a `verified` website candidate;
+- `https://example.com` as a `candidate` website candidate;
+- `https://example.org` as a `rejected` website candidate.
 
-## Aktivni fokus
+## Current focus
 
-Company enrichment temelj i ručni enrichment tok su završeni.
+The company enrichment foundation and the manual enrichment flow are
+complete.
 
-Sledeći korak je ručna potvrda website audit nalaza.
+The next step is manual confirmation of website audit findings.
 
-## Sledeći zadatak
+## Next task
 
-Dodati ručni review website audit nalaza:
+Add a manual review of website audit findings. `company_website_audits`
+already has a `reviewed_at` column; the task is to add:
 
 - `review_status`;
-- `reviewed_at`;
 - `reviewed_by`;
-- ručne akcije za odobravanje, odbijanje i označavanje za pregled.
+- manual actions for approving, rejecting, and flagging for review, which
+  also set the existing `reviewed_at`.
 
-Nakon toga sledi OSM enrichment za jednu firmu.
+After that comes OSM enrichment for a single company.
 
-## Plan nakon enrichment review-a
+## Plan after the enrichment review
 
-1. Dodati OSM enrichment za jednu firmu.
-2. Definisati pravila identiteta firme preko MB/PIB.
-3. Definisati scoring identitet match-a.
-4. Dodati Wikidata enrichment kao dopunski izvor.
-5. Integrirati CompanyWall tek nakon pismene potvrde uslova.
-6. Implementirati automatsku verifikaciju URL-a tek nakon pouzdanog
-   identiteta.
-7. Dodati Lighthouse rezultate i desktop/mobile screenshotove.
-8. Dodati AI analizu zasnovanu na tehničkim dokazima i snimcima.
-9. Dodati nacrt ponude uz obaveznu ručnu proveru i odobrenje.
-10. Tek nakon potvrđenog kvaliteta dodati queue, rate limiting i batch
-    obradu.
+1. Add OSM enrichment for a single company.
+2. Define company identity rules based on MB/PIB.
+3. Define identity match scoring.
+4. Add Wikidata enrichment as a supplementary source.
+5. Integrate CompanyWall only after written confirmation of the terms.
+6. Implement automatic URL verification only after identity is reliable.
+7. Add Lighthouse results and desktop/mobile screenshots.
+8. Add AI analysis based on technical evidence and screenshots.
+9. Add a draft offer with mandatory manual review and approval.
+10. Only after quality is confirmed, add queues, rate limiting, and batch
+    processing.
 
-## Trenutna ograničenja
+## Current limitations
 
-- URL, telefon i e-mail unose se ručno.
-- Enrichment kandidati se trenutno unose samo ručno.
-- Website audit se unosi ručno kroz formu na detalju firme.
-- Tehnička provera URL-a se pokreće ručno za pojedinačan audit.
-- `website_checked_at` se automatski postavlja pri kreiranju leada i
-  promeni `website_status`.
-- Nema automatskog ili zakazanog ponavljanja tehničke provere.
-- Nema Lighthouse rezultata ni vizuelnog audita.
-- Nema integracije sa OSM, Wikidata, CompanyWall ili Google Places.
-- Nema automatske verifikacije identiteta firme.
-- Nema automatske potvrde enrichment URL-a.
-- Potvrđeni website se u CRM primenjuje samo eksplicitnom korisničkom
-  akcijom.
-- AI analiza, Lighthouse rezultati i screenshotovi nisu implementirani.
-- Nema AI API integracije.
-- Nema automatskog slanja poruka, e-mailova ili ponuda.
-- Nema autentikacije i više korisnika.
+- URL, phone, and email are entered manually.
+- Enrichment candidates are currently entered only manually.
+- Website audits are created manually through the form on the company
+  detail page, or from a verified enrichment candidate through the
+  `data-points.run-audit` route.
+- The technical URL check is run manually for an individual audit.
+- `CompanyLeadObserver` sets `website_checked_at` automatically when a
+  lead is created and when `website_status` changes.
+- Known inconsistency: `applyWebsiteDataPointToLead` always sets
+  `website_checked_at` to `now()`, even when `website_status` does not
+  change.
+- There is no automatic or scheduled repetition of the technical check.
+- There are no Lighthouse results and no visual audit.
+- There is no integration with OSM, Wikidata, CompanyWall, or Google
+  Places.
+- There is no automatic verification of company identity.
+- There is no automatic verification of enrichment URLs.
+- A verified website is applied to the CRM only through an explicit user
+  action.
+- AI analysis, Lighthouse results, and screenshots are not implemented.
+- There is no AI API integration.
+- There is no automatic sending of messages, emails, or offers.
+- There is no authentication and no multi-user support.

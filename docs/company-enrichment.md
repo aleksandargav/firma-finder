@@ -1,12 +1,14 @@
 # Firma Finder — Company Enrichment
 
-## Svrha
+## Purpose
 
-Company enrichment modul služi za pronalaženje, proveru i potvrdu dodatnih
-podataka o firmama iz APR registra, pre svega website URL-a.
+The company enrichment module is used to find, check, and verify
+additional data about companies from the APR register, primarily the
+website URL.
 
-APR JSON izvor koji se trenutno koristi ne sadrži website URL. Provereno je
-da svih 134.374 zapisa ima samo sledeća polja:
+The APR JSON source currently in use does not contain a website URL. It
+has been confirmed that all 134,374 records contain only the following
+fields:
 
 - `PoslovnoIme`;
 - `SifraOpstine`;
@@ -16,183 +18,203 @@ da svih 134.374 zapisa ima samo sledeća polja:
 - `NazivPravneForme`;
 - `SifraDelatnosti`.
 
-Zato se website i drugi kontakt podaci prikupljaju kroz zaseban enrichment
-sloj, a ne kroz izmenu APR podataka.
+For this reason, websites and other contact details are collected through
+a separate enrichment layer rather than by changing APR data.
 
 ---
 
-## Osnovna pravila
+## Basic rules
 
-1. APR, CRM, enrichment i website audit podaci ostaju odvojeni.
-2. APR podaci u `companies` se nikada ne menjaju enrichment podacima.
-3. Enrichment podaci ne smeju automatski da prepisuju CRM odluke.
-4. Website URL se u CRM vodi samo kao potvrđena vrednost.
-5. Svaki enrichment podatak mora imati poznat izvor.
-6. Svaki izvor mora imati proveren licencni/pravni status korišćenja.
-7. Sistem ne sme da zaobiđe CAPTCHA, login, rate limit, robots zaštite ili
-   druge mere kontrole pristupa.
-8. Masovno prikupljanje podataka radi se samo kroz dozvoljene izvore,
-   ugovorene API-je ili zvanične izvoze.
-9. AI i automatika mogu da predlože podatak, ali konačnu odluku uvek
-   potvrđuje korisnik kada postoji bilo kakva sumnja.
-
----
-
-## Temeljni problem
-
-APR registar daje pouzdan identitet firme, ali ne daje njen website.
-
-CompanyWall i slični servisi mogu dati website, ali je potrebno potvrditi:
-
-- da li njihov API ili izvoz sadrži website URL;
-- kako se firma povezuje preko matičnog broja (MB) ili PIB-a;
-- koje su cene, kvote i rate limiti;
-- da li je dozvoljeno čuvanje podataka u internom CRM-u;
-- da li je dozvoljen scraping, i pod kojim uslovima.
-
-OpenStreetMap i Wikidata su besplatni dopunski izvori, ali ne znaju APR
-matični broj i ne mogu sami da pouzdano potvrde identitet firme.
+1. APR, CRM, enrichment, and website audit data remain separate.
+2. APR data in `companies` is never changed by enrichment data.
+3. Enrichment data must not automatically overwrite CRM decisions.
+4. A website URL from the enrichment layer reaches the CRM only as a
+   verified value. The CRM form itself accepts any valid URL entered by
+   the user.
+5. Every enrichment value must have a known source.
+6. Every source must have a checked license/legal status of use.
+7. The system must not bypass CAPTCHAs, logins, rate limits, robots
+   protections, or other access control measures.
+8. Bulk data collection is done only through permitted sources, contracted
+   APIs, or official exports.
+9. AI and automation may suggest a value, but the user always confirms
+   the final decision whenever there is any doubt.
 
 ---
 
-## Arhitektura
+## The core problem
+
+The APR register provides a reliable company identity, but not the
+company's website.
+
+CompanyWall and similar services may provide a website, but the following
+needs to be confirmed:
+
+- whether their API or export includes the website URL;
+- how a company is matched by registration number (MB) or tax ID (PIB);
+- what the prices, quotas, and rate limits are;
+- whether storing the data in an internal CRM is permitted;
+- whether scraping is permitted, and under what conditions.
+
+OpenStreetMap and Wikidata are free supplementary sources, but they do not
+know the APR registration number and cannot reliably confirm a company's
+identity on their own.
+
+---
+
+## Architecture
+
+Target architecture:
 
 ```text
 APR Open Data API
    ↓
 apr:sync
    ↓
-Lokalni APR snapshot
+Local APR snapshot
    ↓
 apr:import
    ↓
 companies
    ↓
-Enrichment izvori
-   ├── Ručni unos
+Enrichment sources
+   ├── Manual entry
    ├── CompanyWall
    ├── OpenStreetMap
    ├── Wikidata
    ├── Google Places
-   └── Budući regionalni izvori
+   └── Future regional sources
    ↓
 company_data_points
    ↓
-Automatska provera i rangiranje kandidata
+Automatic checking and ranking of candidates
    ↓
-Ručni pregled spornih slučajeva
+Manual review of disputed cases
    ↓
-Potvrđen website URL
+Verified website URL
    ↓
 company_leads.website_url
    ↓
 Website audit / Lighthouse / screenshot
 ```
 
-APR Open Data API je trenutno implementiran kao izvor identiteta firme.
-On osvežava lokalni APR katalog, ali ne dodaje website ni kontakt podatke.
+Not implemented yet: the CompanyWall, OpenStreetMap, Wikidata, Google
+Places, and regional sources; automatic checking and ranking of
+candidates; Lighthouse; and screenshots. Today, candidates come only from
+manual entry and are reviewed manually.
+
+The APR Open Data API is currently implemented as the company identity
+source. It refreshes the local APR catalog but does not add a website or
+contact details.
 
 ---
 
-## Izvori podataka
+## Data sources
 
-| Izvor | Interna vrednost | Šta može da da | Status |
+| Source | Internal value | What it can provide | Status |
 |---|---|---|---|
-| Ručni unos | `manual` | Website, telefon, e-mail, napomene | Implementiran |
-| CompanyWall | `companywall` | Website, kontakti, MB/PIB | Čeka se potvrda uslova |
-| OpenStreetMap | `openstreetmap` | Website, telefon, e-mail, lokacija | Planiran |
-| Wikidata | `wikidata` | Zvanični sajt za poznate subjekte | Planiran |
-| Google Places | `google_places` | Website, telefon, adresa, kategorija | Opciono, plaćeno |
-| APR Open Data | `apr` | MB, naziv, status, delatnost, datum preseka | Implementiran kao identitet izvor |
+| Manual entry | `manual` | Website, phone, email, address, notes | Implemented |
+| CompanyWall | `companywall` | Website, contacts, MB/PIB | Awaiting confirmation of terms |
+| OpenStreetMap | `openstreetmap` | Website, phone, email, location | Planned |
+| Wikidata | `wikidata` | Official website for well-known entities | Planned |
+| Google Places | `google_places` | Website, phone, address, category | Optional, paid |
+| APR Open Data | `apr` | MB, name, status, activity, snapshot date | Implemented as the identity source |
 
-APR Open Data API je povezan kroz `AprApiService`, komandu `apr:sync` i
-postojeći `apr:import`. Lokalni APR katalog se ažurira upsertom po
-matičnom broju firme.
+The APR Open Data API is connected through `AprApiService`, the `apr:sync`
+command, and the existing `apr:import`. The local APR catalog is updated
+by upserting on the company registration number.
 
-CompanyWall, ako potvrdi pristup i website podatak, treba da bude
-prioritetni automatski izvor jer omogućava povezivanje preko MB/PIB.
+If CompanyWall confirms access and the website data, it should be the
+primary automated source, because it allows matching by MB/PIB.
 
-OpenStreetMap je besplatan izvor za lokalne biznise, ali pokrivenost zavisi
-od toga da li je biznis mapiran u OSM-u.
+OpenStreetMap is a free source for local businesses, but coverage depends
+on whether the business is mapped in OSM.
 
-Wikidata koristi property `P856 — official website` i koristan je pre svega
-za veće ili poznate kompanije.
-
----
-
-## Identitet firme
-
-Identitet firme se ne određuje samo po nazivu.
-
-Prioritet uparivanja je:
-
-1. MB iz enrichment izvora se poklapa sa APR `registration_number`;
-2. PIB iz enrichment izvora se poklapa sa APR PIB-om;
-3. MB i PIB se poklapaju;
-4. naziv + opština/grad služe samo kao dodatni signal;
-5. naziv nikada nije dovoljan sam po sebi za automatsku potvrdu.
-
-Ako enrichment izvor vrati MB ili PIB koji ne postoji u APR bazi, zapis se
-čuva kao `unmatched` i ne povezuje se sa CRM leadom.
-
-APR sync trenutno koristi matični broj kao stabilan ključ za upsert
-lokalnih APR zapisa.
+Wikidata uses property `P856 — official website` and is useful mainly for
+larger or well-known companies.
 
 ---
 
-## Model podataka
+## Company identity
 
-Tabela:
+A company's identity is not determined by its name alone.
+
+Planned: when matching against external sources is built, the matching
+priority will be:
+
+1. the MB from the enrichment source matches the APR
+   `registration_number`;
+2. the PIB from the enrichment source matches the APR PIB;
+3. both MB and PIB match;
+4. name + municipality/city serve only as an additional signal;
+5. the name alone is never enough for automatic verification.
+
+Note: the `companies` table does not currently store a PIB, so PIB
+matching also requires adding the PIB to the APR catalog.
+
+Planned: if an enrichment source returns an MB or PIB that does not exist
+in the APR database, the record will be stored as `unmatched` and not
+linked to a CRM lead. The `unmatched` status exists, but nothing sets it
+yet.
+
+APR sync currently uses the registration number as the stable key for
+upserting local APR records.
+
+---
+
+## Data model
+
+Table:
 
 ```text
 company_data_points
 ```
 
-Relacija:
+Relationship:
 
 ```text
 Company hasMany CompanyDataPoint
 CompanyDataPoint belongsTo Company
 ```
 
-Polja:
+Fields:
 
-| Polje | Tip | Svrha |
+| Field | Type | Purpose |
 |---|---|---|
-| `id` | primarni ključ | Identifikator zapisa |
-| `company_id` | foreign key, nullable | APR firma ako je match pronađen |
-| `external_identifier` | string, nullable | MB, PIB, Place ID ili drugi spoljni ID |
+| `id` | primary key | Record identifier |
+| `company_id` | foreign key, nullable | The APR company, if a match was found |
+| `external_identifier` | string, nullable | MB, PIB, Place ID, or another external ID |
 | `identifier_type` | string, nullable | `registration_number`, `pib`, `place_id`, `name_address` |
 | `field` | string | `website`, `email`, `phone`, `address` |
-| `value` | text | Nađena vrednost |
-| `source` | string | Izvor podatka |
-| `source_url` | string, nullable | URL izvora ili profila firme |
+| `value` | text | The value found |
+| `source` | string | Data source |
+| `source_url` | string, nullable | URL of the source or the company profile |
 | `confidence` | string | `high`, `medium`, `low` |
 | `identity_match_score` | integer | 0–100 |
-| `data_license_status` | string | Licencni status izvora |
-| `status` | string | Status potvrde zapisa |
-| `retrieved_at` | timestamp, nullable | Kada je podatak preuzet |
-| `verified_at` | timestamp, nullable | Kada je podatak potvrđen |
-| `verified_by` | string, nullable | `system` ili `user` |
-| `notes` | text, nullable | Internе napomene |
-| `created_at` | timestamp | Datum kreiranja |
-| `updated_at` | timestamp | Datum poslednje izmene |
+| `data_license_status` | string | License status of the source |
+| `status` | string | Verification status of the record |
+| `retrieved_at` | timestamp, nullable | When the value was retrieved |
+| `verified_at` | timestamp, nullable | When the value was verified |
+| `verified_by` | string, nullable | `user` (manual verification); `system` is planned for automatic verification |
+| `notes` | text, nullable | Internal notes |
+| `created_at` | timestamp | Creation date |
+| `updated_at` | timestamp | Date of the last change |
 
-`company_id` koristi `cascadeOnDelete`. Brisanje APR firme briše i njene
-enrichment zapise.
+`company_id` uses `cascadeOnDelete`. Deleting an APR company also deletes
+its enrichment records.
 
 ---
 
-## Dozvoljene vrednosti
+## Allowed values
 
-### Tip podatka
+### Data type
 
 - `website`
 - `email`
 - `phone`
 - `address`
 
-### Izvor
+### Source
 
 - `manual`
 - `companywall`
@@ -207,14 +229,14 @@ enrichment zapise.
 - `medium`
 - `low`
 
-### Licencni status
+### License status
 
 - `allowed`
 - `restricted`
 - `forbidden`
 - `unknown`
 
-### Status enrichment zapisa
+### Enrichment record status
 
 - `candidate`
 - `verified`
@@ -222,7 +244,7 @@ enrichment zapise.
 - `unmatched`
 - `needs_review`
 
-### Tip identifikatora
+### Identifier type
 
 - `registration_number`
 - `pib`
@@ -231,98 +253,103 @@ enrichment zapise.
 
 ---
 
-## Statusi enrichment zapisa
+## Enrichment record statuses
 
-| Interna vrednost | Prikaz | Značenje |
+| Internal value | Display | Meaning |
 |---|---|---|
-| `candidate` | Kandidat | Podatak je pronađen, ali nije potvrđen |
-| `verified` | Potvrđeno | Podatak je proveren i može se koristiti |
-| `rejected` | Odbijeno | Podatak je odbijen |
-| `unmatched` | Nije upareno | Izvor nije povezan sa poznatom APR firmom |
-| `needs_review` | Za pregled | Postoji sukob ili nedovoljno jak signal |
+| `candidate` | Candidate | The value was found but has not been verified |
+| `verified` | Verified | The value has been checked and can be used |
+| `rejected` | Rejected | The value has been rejected |
+| `unmatched` | Unmatched | The source is not linked to a known APR company |
+| `needs_review` | Needs_review | There is a conflict or the signal is not strong enough |
+
+The status badge in the UI shows the internal value with its first letter
+capitalized; there are no separate display labels.
 
 ---
 
-## Nivoi poverenja
+## Confidence levels
 
-| Nivo | Značenje | Primer |
+| Level | Meaning | Example |
 |---|---|---|
-| `high` | Jak identitet i pouzdan izvor | CompanyWall MB/PIB match |
-| `medium` | Delimično poklapanje | OSM naziv + opština |
-| `low` | Slab ili nesiguran signal | Samo sličan naziv |
+| `high` | Strong identity and a reliable source | CompanyWall MB/PIB match |
+| `medium` | Partial match | OSM name + municipality |
+| `low` | Weak or uncertain signal | Only a similar name |
 
-`confidence` ne zamenjuje licencni status. Podatak može biti visokog
-poverenja, ali nedozvoljen za korišćenje ako izvor to ne dozvoljava.
+`confidence` does not replace the license status. A value can have high
+confidence but still not be permitted for use if the source does not
+allow it.
 
 ---
 
-## Licencni status izvora
+## Source license status
 
-| Vrednost | Značenje |
+| Value | Meaning |
 |---|---|
-| `allowed` | Podatak sme da se čuva i koristi u internom CRM-u |
-| `restricted` | Podatak se koristi uz ograničenja, npr. atribuciju ili ugovor |
-| `forbidden` | Podatak se ne sme koristiti |
-| `unknown` | Uslovi još nisu potvrđeni |
+| `allowed` | The value may be stored and used in the internal CRM |
+| `restricted` | The value is used with restrictions, e.g. attribution or a contract |
+| `forbidden` | The value must not be used |
+| `unknown` | The terms have not been confirmed yet |
 
-Dok CompanyWall ne potvrdi uslove, njegov izvor ostaje `unknown` ili
-`restricted`, zavisno od njihovog odgovora.
+Until CompanyWall confirms the terms, its source remains `unknown` or
+`restricted`, depending on their answer.
 
 ---
 
-## Ručni enrichment tok
+## Manual enrichment flow
 
-Trenutno je implementiran ručni unos i pregled enrichment kandidata.
+Manual entry and review of enrichment candidates are currently
+implemented.
 
 ```text
-Korisnik bira tip podatka
-→ unosi vrednost, confidence i licencni status
-→ sistem validira i normalizuje vrednost
-→ kreira se candidate
-→ korisnik potvrđuje, odbija ili označava za pregled
+The user chooses a data type
+→ enters the value, confidence, and license status
+→ the system validates and normalizes the value
+→ a candidate is created
+→ the user verifies it, rejects it, or flags it for review
 ```
 
-Podržani tipovi podataka su:
+The supported data types are:
 
 - `website`;
 - `email`;
 - `phone`;
 - `address`.
 
-Website URL se normalizuje tako što mu se po potrebi dodaje `https://`.
-URL bez validnog domena se odbacuje.
+A website URL is normalized by adding `https://` when needed. A URL
+without a valid domain is rejected.
 
-E-mail adresa se validira pre čuvanja.
+An email address is validated before it is saved.
 
 ---
 
-## Primena potvrđenog website URL-a u CRM
+## Applying a verified website URL to the CRM
 
-Potvrđeni website kandidat može se primeniti u CRM samo eksplicitnom
-korisničkom akcijom.
+A verified website candidate can be applied to the CRM only through an
+explicit user action.
 
 ```text
 Website data point
 → status verified
-→ korisnik klikće „Primeni u CRM“
-→ company_leads.website_url se ažurira
+→ the user clicks "Apply to CRM"
+→ company_leads.website_url is updated
 ```
 
-Ako firma nema CRM lead, kreira se novi lead sa:
+If the company has no CRM lead, a new lead is created with:
 
-- `website_url` = potvrđeni URL;
+- `website_url` = the verified URL;
 - `website_status = active`;
 - `lead_status = new`;
 - `lead_score = 0`;
 - `website_checked_at = now()`.
 
-Ako firma već ima CRM lead, menjaju se samo:
+If the company already has a CRM lead, only the following are changed:
 
 - `website_url`;
 - `website_status`;
 - `website_checked_at`.
 
-Ne menjaju se:
+The following are not changed:
 
 - `lead_status`;
 - `lead_score`;
@@ -330,91 +357,97 @@ Ne menjaju se:
 - `email`;
 - `notes`.
 
-APR podaci se ne menjaju.
+APR data is not changed.
 
 ---
 
-## Website audit iz enrichment kandidata
+## Website audit from an enrichment candidate
 
-Za potvrđeni website kandidat, kod firme koja već ima CRM lead, može se
-pokrenuti website audit.
+For a verified website candidate of a company that already has a CRM
+lead, a website audit can be run.
 
 ```text
 Verified website data point
-→ korisnik klikće „Pokreni website audit“
-→ kreira se CompanyWebsiteAudit
-→ WebsiteAuditService proverava URL
-→ rezultat se čuva u company_website_audits
+→ the user clicks "Run website audit"
+→ a CompanyWebsiteAudit is created
+→ WebsiteAuditService checks the URL
+→ the result is stored in company_website_audits
 ```
 
-Audit se može pokrenuti samo ako:
+An audit can be run only if:
 
-- data point je tipa `website`;
-- data point ima status `verified`;
-- firma ima CRM lead.
+- the data point is of type `website`;
+- the data point has the status `verified`;
+- the company has a CRM lead.
 
-Audit koristi postojeći `WebsiteAuditService` i čuva:
+The audit uses the existing `WebsiteAuditService` and stores:
 
-- URL provere;
-- krajnji URL;
-- HTTP status;
-- dostupnost;
+- the URL to check;
+- the final URL;
+- the HTTP status;
+- reachability;
 - HTTPS status;
-- broj redirekcija;
-- vreme odgovora;
-- naslov stranice;
-- meta description;
-- datum početka i završetka;
-- grešku, ako je bilo.
+- a redirect flag (`redirect_count`, 0 or 1);
+- the response time;
+- the page title;
+- the meta description;
+- the start and end date;
+- the error, if there was one.
 
-Enrichment zapis se ne menja pokretanjem audita.
+Note: `redirect_count` is 1 whenever the final URL differs from the
+requested URL, so a difference such as a trailing slash also gives 1.
+
+Running the audit does not change the enrichment record.
 
 ---
 
-## Automatska verifikacija
+## Automatic verification
 
-Website URL može automatski da postane `verified` samo ako su ispunjeni
-svi uslovi:
+Planned: when automatic verification is built, a website URL will be able
+to become `verified` automatically only if all of the following
+conditions are met:
 
-1. izvor ima dozvoljen licencni status;
-2. MB i/ili PIB se poklapa sa APR firmom;
-3. URL je validan;
-4. URL je dostupan i vraća očekivan HTTP odgovor;
-5. URL ne vodi na parkirani domen ili očigledno nepovezan sajt;
-6. naziv firme se pojavljuje u domenu, naslovu stranice ili sadržaju;
-7. ne postoji sukob sa drugim jakim izvorom.
+1. the source has a permitted license status;
+2. the MB and/or PIB matches an APR company;
+3. the URL is valid;
+4. the URL is reachable and returns the expected HTTP response;
+5. the URL does not lead to a parked domain or an obviously unrelated
+   website;
+6. the company name appears in the domain, page title, or content;
+7. there is no conflict with another strong source.
 
-Ako bilo koji uslov nedostaje, zapis ostaje `candidate` ili prelazi u
+If any condition is missing, the record remains `candidate` or moves to
 `needs_review`.
 
-Automatska verifikacija trenutno nije implementirana.
+Automatic verification is not implemented yet. Verification is currently
+manual only, through `verify()`.
 
 ---
 
-## Primer uspešnog toka
+## Example of a successful flow
 
-Sledeći primeri su hipotetički i služe samo za objašnjenje mogućih
-tokova. Ne predstavljaju stvarne rezultate CompanyWall-a, OSM-a ili
-drugih integracija. Automatska verifikacija trenutno nije implementirana.
+The following examples are hypothetical and serve only to explain possible
+flows. They do not represent actual results from CompanyWall, OSM, or
+other integrations. Automatic verification is not implemented yet.
 
 ```text
-APR firma:
-- Testna Firma DOO (izmišljeni naziv)
+APR company:
+- Test Company DOO (fictional name)
 - MB: [placeholder]
 
-Hipotetički izvor:
+Hypothetical source:
 - MB: [placeholder]
 - Website: https://example.com
 
-Provera:
-- MB match: da
-- URL radi: da
-- HTTPS: da
-- Naziv firme u sadržaju: da
-- Uslove korišćenja izvora treba proveriti pre integracije i korišćenja
-  podataka.
+Check:
+- MB match: yes
+- URL works: yes
+- HTTPS: yes
+- Company name in content: yes
+- The source's terms of use must be checked before integrating and using
+  the data.
 
-Hipotetički rezultat:
+Hypothetical result:
 - status: verified
 - CRM website_url: https://example.com
 - CRM website_status: active
@@ -422,108 +455,112 @@ Hipotetički rezultat:
 
 ---
 
-## Primer spornog slučaja
+## Example of a disputed case
 
 ```text
-Hipotetički izvor A:
+Hypothetical source A:
 - MB: [placeholder]
 - Website: https://example.com
 
-Hipotetički izvor B:
-- Naziv: Testna Firma
+Hypothetical source B:
+- Name: Test Company
 - Website: https://example.org
 
-Hipotetički rezultat:
+Hypothetical result:
 - status: needs_review
-- razlog: dva izvora vraćaju različite website URL-ove
+- reason: the two sources return different website URLs
 ```
 
-Korisnik tada ručno bira tačan URL ili odbacuje oba kandidata.
+The user then manually chooses the correct URL or rejects both
+candidates.
 
 ---
 
-## CompanyWall — trenutni status
+## CompanyWall — current status
 
-CompanyWall je kontaktiran radi mogućeg pristupa podacima.
+CompanyWall has been contacted about possible access to their data.
 
-Potrebno je dobiti pisanu potvrdu za:
+Written confirmation is needed for:
 
-1. da li njihov Web API ili izvoz sadrži website URL;
-2. kako se firma povezuje preko MB/PIB;
-3. primer JSON/CSV odgovora;
-4. cene, pakete, kvote i rate limite;
-5. uslove čuvanja podataka u internom CRM-u;
-6. da li je dozvoljen scraping i pod kojim uslovima.
+1. whether their Web API or export includes the website URL;
+2. how a company is matched by MB/PIB;
+3. an example JSON/CSV response;
+4. prices, plans, quotas, and rate limits;
+5. the terms for storing the data in an internal CRM;
+6. whether scraping is permitted, and under what conditions.
 
-Dok ti uslovi nisu potvrđeni, CompanyWall se ne integriše i ne koristi se
-za automatsko prikupljanje podataka.
-
----
-
-## APR Open Data — trenutni status
-
-APR Open Data API je implementiran kao izvor identiteta firme.
-
-Implementirano je:
-
-- `AprApiService` za preuzimanje APR snapshot-a;
-- `apr:sync` za preuzimanje kompletnog snapshot-a;
-- lokalno čuvanje snapshot-a u `storage/app/apr/snapshots/`;
-- `apr:import` za upis ili ažuriranje firmi u `companies`;
-- upsert po matičnom broju;
-- čuvanje datuma APR preseka u `source_snapshot_date`;
-- čuvanje datuma lokalnog uvoza u `imported_at`.
-
-APR sync ne dodaje website URL, telefon, e-mail ili bilo koji enrichment
-podatak. Njegova uloga je da lokalni APR identitet firme bude ažuran.
+Until these terms are confirmed, CompanyWall is not integrated and is not
+used for automated data collection.
 
 ---
 
-## Regionalni plan
+## APR Open Data — current status
 
-Prva verzija enrichment sistema razvija se za Srbiju.
+The APR Open Data API is implemented as the company identity source.
 
-Kasnije se dodaju adapteri po zemljama:
+Implemented:
 
-| Zemlja | Izvor / pristup | Status |
+- `AprApiService` for downloading the APR snapshot;
+- `apr:sync` for downloading the complete snapshot;
+- local storage of the snapshot in `storage/app/apr/snapshots/`;
+- `apr:import` for writing or updating companies in `companies`;
+- upsert by registration number;
+- storage of the APR snapshot date in `source_snapshot_date`;
+- storage of the local import date in `imported_at`.
+
+APR sync does not add a website URL, phone, email, or any enrichment data.
+Its role is to keep the local APR company identity up to date.
+
+---
+
+## Regional plan
+
+The first version of the enrichment system is being developed for Serbia.
+
+Country-specific adapters will be added later:
+
+| Country | Source / access | Status |
 |---|---|---|
-| Srbija | APR Open Data API + enrichment izvori | APR identitet izvor implementiran |
-| Slovenija | AJPES / PRS | Kasnije |
-| Bugarska | CompanyBook.BG | Kasnije |
-| Crna Gora | CompanyWall ili komercijalni izvor | Kasnije |
-| Bosna i Hercegovina | BIFIDEX / lokalni registri | Kasnije |
-| Albanija | BIFIDEX / lokalni registri | Kasnije |
-| Severna Makedonija | BIFIDEX / lokalni registri | Kasnije |
+| Serbia | APR Open Data API + enrichment sources | APR identity source implemented |
+| Slovenia | AJPES / PRS | Later |
+| Bulgaria | CompanyBook.BG | Later |
+| Montenegro | CompanyWall or a commercial source | Later |
+| Bosnia and Herzegovina | BIFIDEX / local registers | Later |
+| Albania | BIFIDEX / local registers | Later |
+| North Macedonia | BIFIDEX / local registers | Later |
 
-Svaka zemlja treba da ima svoj adapter, ali svi adapteri vraćaju isti
-normalizovani format podataka.
-
----
-
-## Šta se ne radi
-
-- Ne masovno se skrejpuje CompanyWall bez pisane saglasnosti.
-- Ne pogađa se domen po nazivu firme, npr. `nazivfirme.rs`.
-- Ne ubacuje se automatski URL u CRM bez dovoljno jakog poklapanja.
-- Ne menjaju se APR podaci enrichment podacima.
-- Ne koriste se izvori koji zabranjuju automatizovano prikupljanje.
-- Ne vrši se masovno crawl-ovanje svih firmi u prvoj verziji.
-- Ne šalju se poruke, e-mailovi ili ponude bez ručnog odobrenja.
-- APR sync ne briše firme koje nestanu iz novijeg preseka.
+Each country should have its own adapter, but all adapters return the same
+normalized data format.
 
 ---
 
-## Plan implementacije
+## What is not done
 
-1. [x] Kreirati `company_data_points` tabelu i `CompanyDataPoint` model.
-2. [x] Dodati relaciju `Company hasMany CompanyDataPoint`.
-3. [x] Dodati konstante za izvore, statusе, confidence i licencni status.
-4. [x] Omogućiti ručni unos i potvrdu website kandidata.
-5. [ ] Dodati ručni review website audit nalaza.
-6. [ ] Dodati OSM enrichment za jednu firmu.
-7. [ ] Dodati Wikidata enrichment kao dopunski izvor.
-8. [ ] Integrirati CompanyWall nakon potvrde uslova.
-9. [ ] Dodati pravila auto-verifikacije.
-10. [ ] Dodati regionalne adaptere.
-11. [ ] Tek nakon pouzdanih potvrđenih URL-ova razvijati Lighthouse i
-    screenshot modul.
+- CompanyWall is not scraped in bulk without written permission.
+- Domains are not guessed from the company name, e.g. `companyname.rs`.
+- A URL is not inserted into the CRM automatically without a sufficiently
+  strong match.
+- APR data is not changed by enrichment data.
+- Sources that forbid automated collection are not used.
+- There is no bulk crawling of all companies in the first version.
+- No messages, emails, or offers are sent without manual approval.
+- APR sync does not delete companies that disappear from a newer snapshot.
+
+---
+
+## Implementation plan
+
+1. [x] Create the `company_data_points` table and the `CompanyDataPoint`
+   model.
+2. [x] Add the `Company hasMany CompanyDataPoint` relationship.
+3. [x] Add constants for sources, statuses, confidence, and license
+   status.
+4. [x] Allow manual entry and verification of website candidates.
+5. [ ] Add a manual review of website audit findings.
+6. [ ] Add OSM enrichment for a single company.
+7. [ ] Add Wikidata enrichment as a supplementary source.
+8. [ ] Integrate CompanyWall after the terms are confirmed.
+9. [ ] Add auto-verification rules.
+10. [ ] Add regional adapters.
+11. [ ] Develop the Lighthouse and screenshot module only once there are
+    reliably verified URLs.

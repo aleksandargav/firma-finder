@@ -1,155 +1,168 @@
 # Website audit
 
-Website audit sloj čuva tehničke i ručne provere sajta firme. Odvojen je
-od APR podataka, CRM podataka i enrichment podataka.
+The website audit layer stores technical and manual checks of a company's
+website. It is separate from APR data, CRM data, and enrichment data.
 
 ## Model
 
-Audit podaci se čuvaju u tabeli `company_website_audits`.
+Audit data is stored in the `company_website_audits` table.
 
-Svaki audit pripada tačno jednom CRM leadu:
+Each audit belongs to exactly one CRM lead:
 
 ```txt
 CompanyLead 1 — N CompanyWebsiteAudit
 CompanyWebsiteAudit N — 1 CompanyLead
 ```
 
-Jedan CRM lead može imati više audit zapisa. To omogućava istoriju
-provera tokom vremena.
+A single CRM lead can have multiple audit records. This makes it possible
+to keep a history of checks over time.
 
-Brisanje CRM leada briše i sve povezane audit zapise.
+Deleting a CRM lead also deletes all related audit records.
 
-## Statusi audita
+## Audit statuses
 
-| Status | Značenje |
+| Status | Meaning |
 |---|---|
-| `pending` | Audit je kreiran, ali još nije završen |
-| `completed` | Audit je uspešno završen |
-| `failed` | Audit nije uspeo |
+| `pending` | The audit has been created but not completed yet |
+| `completed` | The check ran and the website returned an HTTP response, including an HTTP error |
+| `failed` | The connection failed or an exception was thrown |
 
-## Polja
+## Fields
 
-| Polje | Namena |
+| Field | Purpose |
 |---|---|
-| `company_lead_id` | CRM lead čiji se sajt proverava |
-| `status` | Status audita |
-| `requested_url` | URL koji je korisnik ili sistem zatražio |
-| `final_url` | Krajnji URL nakon redirekcija |
-| `http_status` | HTTP status kod |
-| `is_reachable` | Da li je sajt dostupan |
-| `uses_https` | Da li krajnji URL koristi HTTPS |
-| `redirect_count` | Broj redirekcija |
-| `response_time_ms` | Vreme odgovora u milisekundama |
-| `page_title` | Naslov stranice |
-| `meta_description` | Meta description stranice |
-| `notes` | Ručne napomene |
-| `error_message` | Razlog neuspeha |
-| `checked_at` | Datum i vreme provere |
-| `created_at` | Datum kreiranja audita |
-| `updated_at` | Datum poslednje izmene |
+| `company_lead_id` | The CRM lead whose website is checked |
+| `status` | Audit status |
+| `audit_version` | Audit version, `v1` by default |
+| `requested_url` | The URL requested by the user or the system |
+| `final_url` | The final URL after redirects |
+| `http_status` | HTTP status code |
+| `is_reachable` | Whether the website returned a successful (2xx) response |
+| `has_https` | Whether the final URL uses HTTPS |
+| `redirect_count` | Redirect flag: 0 or 1 |
+| `response_time_ms` | Response time in milliseconds |
+| `page_title` | Page title |
+| `meta_description` | Page meta description |
+| `notes` | Manual notes |
+| `error_message` | Reason for failure |
+| `started_at` | Date and time the check started |
+| `completed_at` | Date and time the check ended |
+| `reviewed_at` | Review date; not set by the application yet |
+| `created_at` | Audit creation date |
+| `updated_at` | Date of the last change |
 
-## Ručno kreiranje audita
+Note: `redirect_count` is 1 whenever the final URL differs from the
+requested URL, so a difference such as a trailing slash also gives 1.
 
-Na detalju firme, u okviru CRM lead sekcije, korisnik može ručno kreirati
-novi website audit.
+## Manual audit creation
 
-Korisnik unosi:
+On the company detail page, in the **Website audit history** section,
+which is shown only when the company has a CRM lead, the user can
+manually create a new website audit.
 
-- URL sajta;
-- opcionu napomenu.
+The user enters:
 
-Novi audit se kreira sa statusom `pending`.
+- the URL to check;
+- the audit status (`pending` by default);
+- optionally, the final URL, HTTP status, reachability, HTTPS, redirect
+  flag, response time, page title, meta description, notes, and error.
 
-## Ručna tehnička provera
+## Manual technical check
 
-Za audit u statusu `pending` korisnik može pokrenuti tehničku proveru
-dugmetom **Pokreni tehničku proveru**.
+For every existing audit, the user can run a technical check with the
+**Run technical check** button.
 
-Provera se izvršava kroz `WebsiteAuditService`.
+The check is performed by `WebsiteAuditService`.
 
-Tokom provere aplikacija čuva:
+During the check, the application stores:
 
-- da li je URL dostupan;
-- HTTP status kod;
-- krajnji URL nakon redirekcija;
-- da li krajnji URL koristi HTTPS;
-- broj redirekcija;
-- vreme odgovora;
-- naslov stranice;
-- meta description;
-- razlog greške, ako provera ne uspe.
+- whether the URL is reachable;
+- the HTTP status code;
+- the final URL after redirects;
+- whether the final URL uses HTTPS;
+- the redirect flag;
+- the response time;
+- the page title;
+- the meta description;
+- the reason for the error, if the check fails.
 
-Nakon uspešne provere, audit dobija status `completed`.
+When the website returns an HTTP response, the audit gets the status
+`completed`. A website that answers with an HTTP error is also
+`completed`, with `is_reachable = false`.
 
-Ako provera ne uspe, audit dobija status `failed`, a razlog se čuva u
-`error_message`.
+The audit gets the status `failed` only when the connection fails or an
+exception is thrown, and the reason is stored in `error_message`.
 
-## Prikaz istorije
+## History display
 
-Na detalju firme prikazuje se lista prethodnih website audit zapisa.
+The company detail page shows a list of previous website audit records.
 
-Za svaki audit prikazuju se:
+For each audit, the following are shown:
 
-- datum provere;
-- status;
-- zatraženi URL;
-- krajnji URL;
-- HTTP status;
+- the audit date (`created_at`);
+- the status;
+- the requested URL;
+- the final URL;
+- the HTTP status;
+- reachability;
 - HTTPS status;
-- broj redirekcija;
-- vreme odgovora;
-- naslov stranice;
-- meta description;
-- napomene;
-- razlog greške, ako postoji.
+- the response time;
+- the audit version;
+- the page title;
+- the meta description;
+- notes;
+- the reason for the error, if there is one.
 
-## Audit iz enrichment kandidata
+The redirect flag is stored but not shown in the history.
 
-Za potvrđeni website kandidat, kod firme koja već ima CRM lead, može se
-pokrenuti website audit.
+## Audit from an enrichment candidate
 
-Audit se kreira u postojećoj tabeli `company_website_audits`, a
-`requested_url` se uzima iz potvrđenog enrichment kandidata.
+For a verified website candidate of a company that already has a CRM lead,
+a website audit can be run.
 
-Audit se može pokrenuti samo ako:
+The audit is created in the existing `company_website_audits` table, and
+`requested_url` is taken from the verified enrichment candidate.
 
-- data point je tipa `website`;
-- data point ima status `verified`;
-- firma ima CRM lead.
+An audit can be run only if:
 
-Pokretanje audita ne menja enrichment zapis niti CRM podatke.
+- the data point is of type `website`;
+- the data point has the status `verified`;
+- the company has a CRM lead.
 
-## Sledeći koraci
+Running the audit does not change the enrichment record or the CRM data.
 
-Sledeća faza je ručni review audit rezultata.
+## Next steps
 
-Planirana su sledeća stanja:
+The next phase is a manual review of audit results.
 
-| Status | Značenje |
+The following states are planned:
+
+| Status | Meaning |
 |---|---|
-| `unreviewed` | Audit još nije pregledan |
-| `approved` | Korisnik je potvrdio nalaz |
-| `rejected` | Korisnik je odbacio nalaz |
-| `needs_review` | Nalaz zahteva dodatnu proveru |
+| `unreviewed` | The audit has not been reviewed yet |
+| `approved` | The user confirmed the finding |
+| `rejected` | The user rejected the finding |
+| `needs_review` | The finding needs further checking |
 
-Nakon toga slede:
+After that come:
 
-- Lighthouse metrike;
-- desktop i mobilni screenshotovi;
-- ručna potvrda nalaza;
-- AI analiza zasnovana na potvrđenim rezultatima.
+- Lighthouse metrics;
+- desktop and mobile screenshots;
+- manual confirmation of findings;
+- AI analysis based on confirmed results.
 
-## Testovi
+## Tests
 
-Pokriveni su sledeći slučajevi:
+The following cases are covered:
 
-- kreiranje `CompanyWebsiteAudit` zapisa;
-- relacija prema `CompanyLead`;
-- cascade brisanje audita pri brisanju leada;
-- validacija statusa audita;
-- ručno kreiranje audita kroz UI;
-- prikaz istorije audita;
-- ručna tehnička provera URL-a;
-- čuvanje HTTP statusa, HTTPS statusa, redirekcija, vremena odgovora,
-  naslova stranice i meta description-a;
-- čuvanje greške kada provera ne uspe.
+- creating a `CompanyWebsiteAudit` record;
+- the relationship to `CompanyLead`;
+- cascade deletion of audits when a lead is deleted;
+- audit status validation;
+- manual creation of an audit through the UI;
+- the manual technical URL check;
+- storing the HTTP status, HTTPS status, redirect flag, response time,
+  page title, and meta description;
+- storing the error when the check fails.
+
+The audit history display is not covered by a test.

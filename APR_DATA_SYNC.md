@@ -1,33 +1,34 @@
 # Firma Finder — APR Data Sync
 
-## Svrha
+## Purpose
 
-APR Data Sync modul služi za preuzimanje aktuelnog snimka privrednih
-društava iz APR Open Data API-ja i njegovu lokalnu sinhronizaciju sa
-tabelom `companies`.
+The APR Data Sync module downloads the current snapshot of companies from
+the APR Open Data API and synchronizes it locally with the `companies`
+table.
 
-Cilj je da lokalni APR katalog ostane ažuran, bez dupliranja zapisa i bez
-uticaja na CRM, enrichment ili website audit podatke.
-
----
-
-## Trenutno stanje
-
-Lokalna baza sadrži 134.374 firmi iz APR preseka `2026-09-30`.
-
-Pun sync je uspešno izvršen:
-
-- obrađeno: 134.374 zapisa;
-- preskočeno: 0;
-- uspešno upisano ili ažurirano: 134.374 zapisa;
-- ukupan broj firmi nakon sync-a: 134.374;
-- broj zapisa sa datumom preseka `2026-09-30`: 134.374.
-
-Test suite prolazi: 42 testa i 112 asercija.
+The goal is to keep the local APR catalog up to date without duplicating
+records and without affecting CRM, enrichment, or website audit data.
 
 ---
 
-## Arhitektura
+## Current state
+
+The local database contains 134,374 companies from the APR snapshot
+`2026-09-30`.
+
+A full sync has been completed successfully:
+
+- processed: 134,374 records;
+- skipped: 0;
+- successfully written or updated: 134,374 records;
+- total number of companies after the sync: 134,374;
+- number of records with the snapshot date `2026-09-30`: 134,374.
+
+The test suite passes: 64 tests and 171 assertions.
+
+---
+
+## Architecture
 
 ```text
 APR Open Data API
@@ -38,134 +39,150 @@ storage/app/apr/snapshots/{YYYYMMDD}/companies.json
    ↓
 apr:import
    ↓
-companies tabela
+companies table
 ```
 
-Sync se odvija u dve faze:
+The sync runs in two phases:
 
-1. `apr:sync` preuzima kompletan JSON snapshot preko API-ja.
-2. `apr:import` čita snapshot i upisuje ili ažurira firme u lokalnoj bazi.
+1. `apr:sync` downloads the complete JSON snapshot through the API.
+2. `apr:import` reads the snapshot and writes or updates companies in the
+   local database.
 
-Ovakav tok omogućava da se API preuzimanje i upis u bazu testiraju i
-ponavljaju odvojeno.
+This flow allows the API download and the database write to be tested and
+repeated separately.
 
 ---
 
-## Implementirane komponente
+## Implemented components
 
-| Komponenta | Putanja | Uloga |
+| Component | Path | Role |
 |---|---|---|
-| `AprApiService` | `app/Services/AprApiService.php` | Komunikacija sa APR Open Data API-jem |
-| `SyncAprCompanies` | `app/Console/Commands/SyncAprCompanies.php` | Artisan komanda `apr:sync` |
-| `ImportAprCompanies` | `app/Console/Commands/ImportAprCompanies.php` | Artisan komanda `apr:import` |
-| APR konfiguracija | `config/apr.php` | API URL, token i povezana podešavanja |
+| `AprApiService` | `app/Services/AprApiService.php` | Communication with the APR Open Data API |
+| `SyncAprCompanies` | `app/Console/Commands/SyncAprCompanies.php` | Artisan command `apr:sync` |
+| `ImportAprCompanies` | `app/Console/Commands/ImportAprCompanies.php` | Artisan command `apr:import` |
+| APR configuration | `config/apr.php` | API URL (`APR_API_URL`), CA bundle (`APR_CA_BUNDLE`), and snapshot directory |
+
+`config/apr.php` holds no token, and `AprApiService` sends no token or
+authentication header. It reads:
+
+- `APR_API_URL`, with the default public URL
+  `https://openapi.apr.gov.rs/api/opendata/companies`;
+- `APR_CA_BUNDLE`, with the default `storage/app/apr/ca/apr-ca.pem`;
+- the snapshot directory, `storage/app/apr/snapshots`.
 
 ---
 
-## Komanda `apr:sync`
+## The `apr:sync` command
 
-Komanda preuzima kompletan APR snapshot za zadati datum preseka.
+The command downloads the current complete APR snapshot. It takes no
+options.
 
 ```bash
-php8.5 artisan apr:sync \
-  --date=2026-09-30
+php artisan apr:sync
 ```
 
-Rezultat se čuva u:
+The snapshot date is taken from the `DatumPreseka` field of the API
+response. For the snapshot `2026-09-30`, the result is saved to:
 
 ```text
 storage/app/apr/snapshots/20260930/companies.json
 ```
 
-Snapshot se čuva lokalno pre nego što se bilo šta upiše u bazu.
+The snapshot is saved locally before anything is written to the database.
 
 ---
 
-## Komanda `apr:import`
+## The `apr:import` command
 
-Komanda uvozi lokalni JSON snapshot u tabelu `companies`.
+The command imports a local JSON snapshot into the `companies` table.
 
-Primer za mali test:
+Example for a small test:
 
 ```bash
-php8.5 artisan apr:import \
+php artisan apr:import \
   --file=storage/app/apr/snapshots/20260930/companies.json \
   --limit=5 \
   --batch=500 \
   --write
 ```
 
-Primer za pun sync:
+Example for a full sync:
 
 ```bash
-php8.5 artisan apr:import \
+php artisan apr:import \
   --file=storage/app/apr/snapshots/20260930/companies.json \
   --limit=134374 \
   --batch=500 \
   --write
 ```
 
-Bez `--write`, komanda radi u dry-run režimu i ne upisuje podatke u bazu.
+Without `--write`, the command runs in dry-run mode and does not write any
+data to the database.
 
 ---
 
-## Upis podataka
+## Writing data
 
-Import koristi upsert logiku po matičnom broju firme.
+The import uses upsert logic based on the company registration number.
 
-Pravila:
+Rules:
 
-1. Ako firma sa datim matičnim brojem ne postoji, kreira se novi zapis.
-2. Ako firma postoji, APR polja se ažuriraju novim vrednostima.
-3. CRM, enrichment i audit podaci se nikada ne menjaju APR importom.
-4. `source_snapshot_date` čuva datum APR preseka.
-5. `imported_at` beleži vreme poslednjeg lokalnog uvoza.
-6. Batch veličina je konfigurabilna kroz `--batch`.
+1. If no company with the given registration number exists, a new record
+   is created.
+2. If the company exists, its APR fields are updated with the new values.
+3. CRM, enrichment, and audit data are never changed by the APR import.
+4. `source_snapshot_date` stores the APR snapshot date.
+5. `imported_at` records the time of the last local import.
+6. The batch size is configurable through `--batch`.
 
 ---
 
-## Verifikacija nakon sync-a
+## Verification after the sync
 
-Nakon punog uvoza proveriti:
+After a full import, check:
 
 ```bash
-php8.5 artisan tinker --execute="dump(App\Models\Company::count()); dump(App\Models\Company::where('source_snapshot_date', '2026-09-30')->count());"
+php artisan tinker --execute="dump(App\Models\Company::count()); dump(App\Models\Company::where('source_snapshot_date', '2026-09-30')->count());"
 ```
 
-Očekivani rezultat za presek `2026-09-30`:
+Expected result for the snapshot `2026-09-30`:
 
 ```text
 134374
 134374
 ```
 
-Primer provere pojedinačne firme:
+Example check for a single company:
 
-Pre pokretanja zamenite `UNESITE_MATICNI_BROJ` važećim matičnim brojem
-firme koju želite da proverite.
+Before running it, replace `ENTER_REGISTRATION_NUMBER` with a valid
+registration number of the company you want to check.
 
 ```bash
-php8.5 artisan tinker --execute="dump(App\Models\Company::where('registration_number', 'UNESITE_MATICNI_BROJ')->first(['registration_number','business_name','source_snapshot_date','imported_at','updated_at'])?->toArray());"
+php artisan tinker --execute="dump(App\Models\Company::where('registration_number', 'ENTER_REGISTRATION_NUMBER')->first(['registration_number','business_name','source_snapshot_date','imported_at','updated_at'])?->toArray());"
 ```
 
 ---
 
-## Testirani tok
+## Tested flow
 
-1. Pokrenut je mali test uvoz od 5 zapisa sa `--write`.
-2. Provereno je da ukupan broj firmi ostaje nepromenjen.
-3. Provereno je da postojeća firma dobija novi `source_snapshot_date`, `imported_at` i `updated_at`.
-4. Pokrenut je pun sync za 134.374 zapisa.
-5. Provereno je da nema duplikata i da su svi zapisi vezani za isti APR presek.
-6. Pokrenut je kompletan test suite; svi testovi prolaze.
+1. A small test import of 5 records was run with `--write`.
+2. It was confirmed that the total number of companies stayed the same.
+3. It was confirmed that an existing company gets a new
+   `source_snapshot_date`, `imported_at`, and `updated_at`.
+4. A full sync of 134,374 records was run.
+5. It was confirmed that there are no duplicates and that all records
+   belong to the same APR snapshot.
+6. The complete test suite was run; all tests pass.
 
 ---
 
-## Ograničenja
+## Limitations
 
-- Sync trenutno radi kao ručna Artisan komanda.
-- Nema zakazanog automatskog osvežavanja.
-- Nema inkrementalnog sync-a po promenama; koristi se kompletan snapshot.
-- Nema notifikacija o neuspehu sync-a.
-- Nema automatskog brisanja firmi koje više ne postoje u novom APR preseku.
-- Nema produkcijskog deployment-a; aplikacija je trenutno lokalna.
+- The sync currently runs as a manual Artisan command.
+- There is no scheduled automatic refresh.
+- There is no incremental sync based on changes; the complete snapshot is
+  used.
+- There are no notifications when a sync fails.
+- Companies that no longer exist in a new APR snapshot are not deleted
+  automatically.
+- There is no production deployment; the application is currently local.
