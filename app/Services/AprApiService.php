@@ -13,7 +13,7 @@ class AprApiService
         $caBundle = config('apr.ca_bundle');
 
         if (! is_file($caBundle) || ! is_readable($caBundle)) {
-            throw new RuntimeException("APR CA bundle nije pronađen: {$caBundle}");
+            throw new RuntimeException("APR CA bundle not found: {$caBundle}");
         }
 
         $response = Http::withOptions([
@@ -23,7 +23,7 @@ class AprApiService
 
         if ($response->failed()) {
             throw new RuntimeException(
-                "APR API nije uspeo: HTTP {$response->status()}"
+                "APR API request failed: HTTP {$response->status()}"
             );
         }
 
@@ -31,7 +31,7 @@ class AprApiService
 
         if (! isset($data['DatumPreseka'], $data['Podaci'])) {
             throw new RuntimeException(
-                'APR API odgovor nema očekivana polja DatumPreseka i Podaci.'
+                'The APR API response is missing the expected fields DatumPreseka and Podaci.'
             );
         }
 
@@ -41,7 +41,7 @@ class AprApiService
         $directory = dirname($path);
 
         if (! is_dir($directory) && ! mkdir($directory, 0775, true)) {
-            throw new RuntimeException("Nije moguće napraviti direktorijum: {$directory}");
+            throw new RuntimeException("Unable to create directory: {$directory}");
         }
 
         file_put_contents($path, $response->body());

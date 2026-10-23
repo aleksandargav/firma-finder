@@ -112,7 +112,7 @@ class WebsiteAuditTechnicalCheckTest extends TestCase
         $this->assertSame(CompanyWebsiteAudit::STATUS_FAILED, $audit->status);
         $this->assertFalse($audit->is_reachable);
         $this->assertSame(
-            'URL provere nije definisan.',
+            'The URL to check is not defined.',
             $audit->error_message
         );
     }
@@ -136,7 +136,7 @@ class WebsiteAuditTechnicalCheckTest extends TestCase
 
         $response->assertSessionHas(
             'success',
-            'Tehnička provera sajta je završena.'
+            'The technical website check is complete.'
         );
 
         $audit->refresh();

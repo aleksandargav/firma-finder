@@ -62,7 +62,7 @@ class CompanyWebsiteAuditUiTest extends TestCase
         );
 
         $response->assertRedirect(route('companies.show', $company));
-        $response->assertSessionHas('success', 'Website audit je uspešno dodat.');
+        $response->assertSessionHas('success', 'The website audit was added successfully.');
 
         $this->assertDatabaseHas('company_website_audits', [
             'company_lead_id' => $company->lead->id,

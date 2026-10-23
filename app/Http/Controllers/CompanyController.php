@@ -125,7 +125,7 @@ class CompanyController extends Controller
                     $host = parse_url((string) $value, PHP_URL_HOST);
 
                     if ($host === false || $host === null || ! str_contains($host, '.')) {
-                        $fail('Website URL mora sadržati validan domen, na primer primer.rs.');
+                        $fail('The website URL must contain a valid domain, for example example.com.');
                     }
                 },
             ],
@@ -141,7 +141,7 @@ class CompanyController extends Controller
 
         return redirect()
             ->route('companies.show', $company)
-            ->with('success', 'Lead je uspešno dodat.');
+            ->with('success', 'The lead was added successfully.');
     }
 
     public function updateLead(Request $request, Company $company): RedirectResponse
@@ -161,7 +161,7 @@ class CompanyController extends Controller
                     $host = parse_url((string) $value, PHP_URL_HOST);
 
                     if ($host === false || $host === null || ! str_contains($host, '.')) {
-                        $fail('Website URL mora sadržati validan domen, na primer primer.rs.');
+                        $fail('The website URL must contain a valid domain, for example example.com.');
                     }
                 },
             ],
@@ -180,7 +180,7 @@ class CompanyController extends Controller
 
         return redirect()
             ->route('companies.show', $company)
-            ->with('success', 'Lead je uspešno ažuriran.');
+            ->with('success', 'The lead was updated successfully.');
     }
 
     public function storeWebsiteAudit(Request $request, Company $company): RedirectResponse
@@ -190,7 +190,7 @@ class CompanyController extends Controller
         if (! $lead) {
             return redirect()
                 ->route('companies.show', $company)
-                ->with('error', 'Website audit se može dodati samo firmi koja ima CRM lead.');
+                ->with('error', 'A website audit can only be added for a company that has a CRM lead.');
         }
 
         $request->merge([
@@ -208,7 +208,7 @@ class CompanyController extends Controller
                     $host = parse_url((string) $value, PHP_URL_HOST);
 
                     if ($host === false || $host === null || ! str_contains($host, '.')) {
-                        $fail('URL provere mora sadržati validan domen, na primer primer.rs.');
+                        $fail('The URL to check must contain a valid domain, for example example.com.');
                     }
                 },
             ],
@@ -238,7 +238,7 @@ class CompanyController extends Controller
 
         return redirect()
             ->route('companies.show', $company)
-            ->with('success', 'Website audit je uspešno dodat.');
+            ->with('success', 'The website audit was added successfully.');
     }
 
     public function runWebsiteAudit(
@@ -249,7 +249,7 @@ class CompanyController extends Controller
 
         return redirect()
             ->route('companies.show', $audit->companyLead->company)
-            ->with('success', 'Tehnička provera sajta je završena.');
+            ->with('success', 'The technical website check is complete.');
     }
 
     public function applyWebsiteDataPointToLead(
@@ -260,19 +260,19 @@ class CompanyController extends Controller
         if (! $company) {
             return redirect()
                 ->route('companies.index')
-                ->with('error', 'Enrichment zapis nije povezan sa APR firmom.');
+                ->with('error', 'The enrichment record is not linked to an APR company.');
         }
 
         if ($dataPoint->field !== CompanyDataPoint::FIELD_WEBSITE) {
             return redirect()
                 ->route('companies.show', $company)
-                ->with('error', 'U CRM se može primeniti samo potvrđen website kandidat.');
+                ->with('error', 'Only a verified website candidate can be applied to the CRM.');
         }
 
         if ($dataPoint->status !== CompanyDataPoint::STATUS_VERIFIED) {
             return redirect()
                 ->route('companies.show', $company)
-                ->with('error', 'Samo potvrđen website kandidat može se primeniti u CRM.');
+                ->with('error', 'Only a verified website candidate can be applied to the CRM.');
         }
 
         $company->lead()->updateOrCreate(
@@ -286,7 +286,7 @@ class CompanyController extends Controller
 
         return redirect()
             ->route('companies.show', $company)
-            ->with('success', 'Potvrđeni website je primenjen u CRM.');
+            ->with('success', 'The verified website was applied to the CRM.');
     }
 
     public function leadsIndex(Request $request): View

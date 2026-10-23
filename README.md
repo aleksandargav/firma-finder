@@ -69,7 +69,7 @@ environment variables, neither of which is in `.env.example`:
 `App\Services\AprApiService` sends a plain GET request to `APR_API_URL`
 with no token or authentication header, so no API token is needed. If the
 CA bundle file does not exist or is not readable, the service throws an
-exception (`APR CA bundle nije pronađen: <path>`) before making any
+exception (`APR CA bundle not found: <path>`) before making any
 request, and `apr:sync` fails.
 
 Loading the catalog takes two steps.

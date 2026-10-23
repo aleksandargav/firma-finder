@@ -9,12 +9,13 @@ use JsonException;
 class ImportAprCompanies extends Command
 {
     protected $signature = 'apr:import
-        {--file=storage/app/apr-response.json : Putanja do APR JSON snapshot-a}
-        {--limit=5 : Maksimalan broj zapisa za obradu}
-        {--batch=500 : Broj zapisa po SQL upsert batch-u}
-        {--write : Upisi podatke u bazu; bez ove opcije radi se samo dry-run}';
 
-    protected $description = 'Ucitaj APR JSON i po potrebi uvezi firme u SQLite bazu u batch-evima';
+        {--file=storage/app/apr-response.json : Path to the APR JSON snapshot}
+        {--limit=5 : Maximum number of records to process}
+        {--batch=500 : Number of records per SQL upsert batch}
+        {--write : Write the data to the database; without this option only a dry run is performed}';
+
+    protected $description = 'Read the APR JSON and optionally import the companies into the SQLite database in batches';
 
     public function handle(): int
     {
@@ -24,7 +25,7 @@ class ImportAprCompanies extends Command
             : base_path($file);
 
         if (!is_file($path) || !is_readable($path)) {
-            $this->error("APR JSON fajl nije pronađen ili nije čitljiv: {$path}");
+            $this->error("APR JSON file not found or not readable: {$path}");
 
             return self::FAILURE;
         }
@@ -40,7 +41,7 @@ class ImportAprCompanies extends Command
             $json = file_get_contents($path);
 
             if ($json === false) {
-                throw new \RuntimeException('Ne mogu da pročitam APR JSON fajl.');
+                throw new \RuntimeException('Unable to read the APR JSON file.');
             }
 
             $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
@@ -54,7 +55,7 @@ class ImportAprCompanies extends Command
         $companies = $data['Podaci'] ?? null;
 
         if (!is_string($snapshotDate) || !is_array($companies)) {
-            $this->error('APR JSON nema očekivana polja DatumPreseka i Podaci.');
+            $this->error('The APR JSON is missing the expected fields DatumPreseka and Podaci.');
 
             return self::FAILURE;
         }
@@ -67,16 +68,16 @@ class ImportAprCompanies extends Command
         $written = 0;
         $timestamp = now();
 
-        $this->info($write ? 'WRITE MODE je zatražen.' : 'DRY-RUN: baza neće biti menjana.');
-        $this->line("Datum preseka: {$snapshotDate}");
+        $this->info($write ? 'WRITE MODE requested.' : 'DRY-RUN: the database will not be changed.');
+        $this->line("Snapshot date: {$snapshotDate}");
         $this->line("Limit: {$limit}");
-        $this->line("Batch veličina: {$batchSize}");
+        $this->line("Batch size: {$batchSize}");
 
         if ($write && !$this->confirm(
-            "Upisati do {$limit} APR zapisa u SQLite bazu u batch-evima od {$batchSize}?",
+            "Write up to {$limit} APR records to the SQLite database in batches of {$batchSize}?",
             false
         )) {
-            $this->warn('Upis je otkazan.');
+            $this->warn('Write cancelled.');
 
             return self::SUCCESS;
         }
@@ -128,17 +129,17 @@ class ImportAprCompanies extends Command
         }
 
         $this->newLine();
-        $this->line("Obrađeno: {$processed}");
-        $this->line("Preskočeno: {$skipped}");
+        $this->line("Processed: {$processed}");
+        $this->line("Skipped: {$skipped}");
 
         if ($write) {
-            $this->info("Uspešno upisano ili ažurirano: {$written} zapisa.");
+            $this->info("Successfully written or updated: {$written} records.");
         }
 
         $this->newLine();
 
         $this->table(
-            ['MB', 'Naziv', 'Opština', 'Status', 'Delatnost', 'Osnovana'],
+            ['MB', 'Name', 'Municipality', 'Status', 'Activity', 'Founded'],
             array_map(
                 fn (array $row): array => [
                     $row['registration_number'],
@@ -155,7 +156,7 @@ class ImportAprCompanies extends Command
         if (!$write) {
             $this->newLine();
             $this->comment(
-                'DRY-RUN završen. Za stvarni upis koristi: php8.5 artisan apr:import --limit=5 --write'
+                'DRY-RUN complete. To write the data, use: php artisan apr:import --limit=5 --write'
             );
         }
 
@@ -197,7 +198,7 @@ class ImportAprCompanies extends Command
 
         if ($value === false) {
             $this->error(
-                "Opcija --{$name} mora biti ceo broj između {$minimum} i {$maximum}."
+                "The --{$name} option must be an integer between {$minimum} and {$maximum}."
             );
 
             return null;

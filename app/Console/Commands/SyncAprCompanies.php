@@ -10,11 +10,13 @@ class SyncAprCompanies extends Command
 {
     protected $signature = 'apr:sync';
 
-    protected $description = 'Preuzmi APR Open Data snapshot i sačuvaj ga lokalno';
+
+
+    protected $description = 'Download the APR Open Data snapshot and save it locally';
 
     public function handle(AprApiService $service): int
     {
-        $this->info('Preuzimanje APR Open Data snapshot-a...');
+        $this->info('Downloading the APR Open Data snapshot...');
 
         try {
             $snapshot = $service->fetchSnapshot();
@@ -24,10 +26,10 @@ class SyncAprCompanies extends Command
             return self::FAILURE;
         }
 
-        $this->info('APR snapshot je uspešno sačuvan.');
-        $this->line("Datum preseka: {$snapshot['snapshot_date']}");
-        $this->line("Broj firmi: {$snapshot['company_count']}");
-        $this->line("Fajl: {$snapshot['path']}");
+        $this->info('APR snapshot saved successfully.');
+        $this->line("Snapshot date: {$snapshot['snapshot_date']}");
+        $this->line("Number of companies: {$snapshot['company_count']}");
+        $this->line("File: {$snapshot['path']}");
 
         return self::SUCCESS;
     }

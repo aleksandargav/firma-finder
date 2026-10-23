@@ -20,7 +20,7 @@ class WebsiteAuditService
         $requestedUrl = $audit->requested_url;
 
         if (! $requestedUrl) {
-            return $this->fail($audit, 'URL provere nije definisan.');
+            return $this->fail($audit, 'The URL to check is not defined.');
         }
 
         $startedAt = microtime(true);
@@ -53,12 +53,13 @@ class WebsiteAuditService
         } catch (ConnectionException $exception) {
             return $this->fail(
                 $audit,
-                'Sajt nije mogao da se dostigne: ' . $exception->getMessage()
+
+                'The website could not be reached: ' . $exception->getMessage()
             );
         } catch (\Throwable $exception) {
             return $this->fail(
                 $audit,
-                'Greška pri tehničkoj proveri: ' . $exception->getMessage()
+                'Error during the technical check: ' . $exception->getMessage()
             );
         }
     }

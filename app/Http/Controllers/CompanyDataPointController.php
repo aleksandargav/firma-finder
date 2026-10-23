@@ -40,7 +40,7 @@ class CompanyDataPointController extends Controller
             return back()
                 ->withInput()
                 ->withErrors([
-                    'value' => 'Uneta vrednost nije validna za izabrani tip podatka.',
+                    'value' => 'The entered value is not valid for the selected data type.',
                 ]);
         }
 
@@ -58,7 +58,7 @@ class CompanyDataPointController extends Controller
 
         return redirect()
             ->route('companies.show', $company)
-            ->with('success', 'Enrichment kandidat je uspešno dodat.');
+            ->with('success', 'The enrichment candidate was added successfully.');
     }
 
     public function verify(CompanyDataPoint $dataPoint): RedirectResponse
@@ -66,7 +66,7 @@ class CompanyDataPointController extends Controller
         if ($dataPoint->source !== CompanyDataPoint::SOURCE_MANUAL) {
             return redirect()
                 ->route('companies.show', $dataPoint->company)
-                ->with('error', 'Za sada se ručno potvrđuju samo ručno uneti kandidati.');
+                ->with('error', 'For now, only manually entered candidates can be verified manually.');
         }
 
         $dataPoint->update([
@@ -77,7 +77,9 @@ class CompanyDataPointController extends Controller
 
         return redirect()
             ->route('companies.show', $dataPoint->company)
-            ->with('success', 'Enrichment kandidat je potvrđen.');
+
+
+            ->with('success', 'The enrichment candidate was verified.');
     }
 
     public function reject(CompanyDataPoint $dataPoint): RedirectResponse
@@ -90,7 +92,7 @@ class CompanyDataPointController extends Controller
 
         return redirect()
             ->route('companies.show', $dataPoint->company)
-            ->with('success', 'Enrichment kandidat je odbijen.');
+            ->with('success', 'The enrichment candidate was rejected.');
     }
 
     public function needsReview(CompanyDataPoint $dataPoint): RedirectResponse
@@ -103,7 +105,7 @@ class CompanyDataPointController extends Controller
 
         return redirect()
             ->route('companies.show', $dataPoint->company)
-            ->with('success', 'Enrichment kandidat je označen za pregled.');
+            ->with('success', 'The enrichment candidate was flagged for review.');
     }
 
     public function runAudit(
@@ -115,19 +117,19 @@ class CompanyDataPointController extends Controller
         if (! $company) {
             return redirect()
                 ->route('companies.index')
-                ->with('error', 'Enrichment zapis nije povezan sa APR firmom.');
+                ->with('error', 'The enrichment record is not linked to an APR company.');
         }
 
         if ($dataPoint->field !== CompanyDataPoint::FIELD_WEBSITE) {
             return redirect()
                 ->route('companies.show', $company)
-                ->with('error', 'Website audit se može pokrenuti samo za website kandidata.');
+                ->with('error', 'A website audit can only be run for a website candidate.');
         }
 
         if ($dataPoint->status !== CompanyDataPoint::STATUS_VERIFIED) {
             return redirect()
                 ->route('companies.show', $company)
-                ->with('error', 'Website audit se može pokrenuti samo za potvrđen kandidat.');
+                ->with('error', 'A website audit can only be run for a verified candidate.');
         }
 
         $lead = $company->lead;
@@ -135,7 +137,7 @@ class CompanyDataPointController extends Controller
         if (! $lead) {
             return redirect()
                 ->route('companies.show', $company)
-                ->with('error', 'Website audit se može pokrenuti samo za firmu koja ima CRM lead.');
+                ->with('error', 'A website audit can only be run for a company that has a CRM lead.');
         }
 
         $audit = $lead->websiteAudits()->create([
@@ -147,7 +149,7 @@ class CompanyDataPointController extends Controller
 
         return redirect()
             ->route('companies.show', $company)
-            ->with('success', 'Website audit je pokrenut i završen.');
+            ->with('success', 'The website audit was run and completed.');
     }
 
     private function normalizeValue(string $field, string $value): ?string
