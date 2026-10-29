@@ -191,7 +191,7 @@ class CompanyDataPointTest extends TestCase
     public function test_validation_accepts_all_supported_fields(): void
     {
         foreach (CompanyDataPoint::fields() as $index => $field) {
-            $company = $this->createCompany('12345687' . $index);
+            $company = $this->createCompany('1234569' . $index);
 
             $attributes = $this->validAttributes([
                 'company_id' => $company->id,
