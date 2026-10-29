@@ -42,3 +42,16 @@ Thumbs.db
 /storage/logs/
 /storage/framework/
 /bootstrap/cache/
+
+# AI agent files (local only)
+CLAUDE.md
+AGENTS.md
+.claude/
+.ai/
+.mcp.json
+boost.json
+
+# Local temporary files
+*.backup.md
+struktura.txt
+migracije.txt
