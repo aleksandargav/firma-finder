@@ -15,7 +15,7 @@ class ImportAprCompanies extends Command
         {--batch=500 : Number of records per SQL upsert batch}
         {--write : Write the data to the database; without this option only a dry run is performed}';
 
-    protected $description = 'Read the APR JSON and optionally import the companies into the SQLite database in batches';
+    protected $description = 'Read the APR JSON and optionally import the companies into the database in batches';
 
     public function handle(): int
     {
@@ -74,7 +74,7 @@ class ImportAprCompanies extends Command
         $this->line("Batch size: {$batchSize}");
 
         if ($write && !$this->confirm(
-            "Write up to {$limit} APR records to the SQLite database in batches of {$batchSize}?",
+            "Write up to {$limit} APR records to the database in batches of {$batchSize}?",
             false
         )) {
             $this->warn('Write cancelled.');
