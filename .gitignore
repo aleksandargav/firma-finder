@@ -38,11 +38,6 @@ Thumbs.db
 /exports/
 /data-exports/
 
-# Generated Laravel runtime data
-/storage/logs/
-/storage/framework/
-/bootstrap/cache/
-
 # AI agent files (local only)
 CLAUDE.md
 AGENTS.md
