@@ -138,4 +138,31 @@ class CompanyWebsiteAuditUiTest extends TestCase
         $response->assertRedirect(route('companies.show', $company));
         $this->assertDatabaseCount('company_website_audits', 0);
     }
+
+    public function test_it_stores_long_urls_and_page_title_from_the_ui_form(): void
+    {
+        $company = $this->createCompanyWithLead('22000005');
+        $requestedUrl = 'https://example.com/'.str_repeat('a', 400);
+        $finalUrl = 'https://www.example.com/'.str_repeat('b', 400);
+        $pageTitle = str_repeat('Ž', 400);
+
+        $response = $this->post(
+            route('companies.website-audits.store', $company),
+            [
+                'requested_url' => $requestedUrl,
+                'final_url' => $finalUrl,
+                'status' => CompanyWebsiteAudit::STATUS_COMPLETED,
+                'page_title' => $pageTitle,
+            ]
+        );
+
+        $response->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('company_website_audits', [
+            'company_lead_id' => $company->lead->id,
+            'requested_url' => $requestedUrl,
+            'final_url' => $finalUrl,
+            'page_title' => $pageTitle,
+        ]);
+    }
 }

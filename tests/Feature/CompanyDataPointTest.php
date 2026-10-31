@@ -241,4 +241,26 @@ class CompanyDataPointTest extends TestCase
 
         $this->assertTrue($validator->passes());
     }
+
+    public function test_stores_a_source_url_longer_than_255_characters(): void
+    {
+        $company = $this->createCompany('12345700');
+        $longSourceUrl = 'https://example.com/source/'.str_repeat('a', 400);
+
+        $attributes = $this->validAttributes([
+            'company_id' => $company->id,
+            'source_url' => $longSourceUrl,
+        ]);
+
+        $this->assertTrue(
+            Validator::make($attributes, CompanyDataPoint::rules())->passes()
+        );
+
+        $dataPoint = $company->dataPoints()->create($attributes);
+
+        $this->assertDatabaseHas('company_data_points', [
+            'id' => $dataPoint->id,
+            'source_url' => $longSourceUrl,
+        ]);
+    }
 }

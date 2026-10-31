@@ -5,9 +5,12 @@ namespace App\Services;
 use App\Models\CompanyWebsiteAudit;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class WebsiteAuditService
 {
+    private const PAGE_TITLE_MAX_LENGTH = 500;
+
     public function check(CompanyWebsiteAudit $audit): CompanyWebsiteAudit
     {
         $audit->update([
@@ -95,7 +98,11 @@ class WebsiteAuditService
     private function extractTitle(string $html): ?string
     {
         if (preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $matches)) {
-            return trim(html_entity_decode($matches[1]));
+            return Str::substr(
+                trim(html_entity_decode($matches[1])),
+                0,
+                self::PAGE_TITLE_MAX_LENGTH
+            );
         }
 
         return null;

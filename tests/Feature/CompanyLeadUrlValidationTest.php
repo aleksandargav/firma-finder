@@ -97,4 +97,24 @@ class CompanyLeadUrlValidationTest extends TestCase
             'website_url' => null,
         ]);
     }
+
+    public function test_it_stores_a_url_longer_than_255_characters(): void
+    {
+        $company = $this->createCompany('30000005');
+        $longUrl = 'https://primer.rs/'.str_repeat('a', 400);
+
+        $response = $this->post(route('companies.leads.store', $company), [
+            'website_url' => $longUrl,
+            'website_status' => 'active',
+            'lead_status' => 'new',
+            'lead_score' => 10,
+        ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('company_leads', [
+            'company_id' => $company->id,
+            'website_url' => $longUrl,
+        ]);
+    }
 }

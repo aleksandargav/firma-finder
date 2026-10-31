@@ -145,4 +145,40 @@ class WebsiteAuditTechnicalCheckTest extends TestCase
         $this->assertSame(200, $audit->http_status);
         $this->assertTrue($audit->is_reachable);
     }
+
+    public function test_it_truncates_a_page_title_longer_than_500_characters(): void
+    {
+        Http::fake([
+            'https://example.com' => Http::response(
+                '<html><head><title>'.str_repeat('Č', 700).'</title></head><body>OK</body></html>',
+                200
+            ),
+        ]);
+
+        $audit = $this->createAudit();
+
+        $service = app(WebsiteAuditService::class);
+        $audit = $service->check($audit);
+
+        $this->assertSame(CompanyWebsiteAudit::STATUS_COMPLETED, $audit->status);
+        $this->assertSame(str_repeat('Č', 500), $audit->page_title);
+    }
+
+    public function test_it_stores_a_final_url_longer_than_255_characters(): void
+    {
+        $longUrl = 'https://example.com/'.str_repeat('a', 400);
+
+        Http::fake([
+            'https://example.com/*' => Http::response('<html><body>OK</body></html>', 200),
+        ]);
+
+        $audit = $this->createAudit();
+        $audit->update(['requested_url' => $longUrl]);
+
+        $service = app(WebsiteAuditService::class);
+        $audit = $service->check($audit);
+
+        $this->assertSame(CompanyWebsiteAudit::STATUS_COMPLETED, $audit->status);
+        $this->assertSame($longUrl, $audit->final_url);
+    }
 }
