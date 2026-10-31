@@ -13,7 +13,7 @@ records and without affecting CRM, enrichment, or website audit data.
 
 ## Current state
 
-The local database contains 134,374 companies from the APR snapshot
+The local MySQL database contains 134,374 companies from the APR snapshot
 `2026-09-30`.
 
 A full sync has been completed successfully:
@@ -24,7 +24,11 @@ A full sync has been completed successfully:
 - total number of companies after the sync: 134,374;
 - number of records with the snapshot date `2026-09-30`: 134,374.
 
-The test suite passes: 64 tests and 171 assertions.
+After the move from SQLite to MySQL (2026-10-29), the same snapshot was
+imported again into the empty MySQL database: 134,374 processed,
+0 skipped, 134,374 written.
+
+The test suite passes on MySQL: 72 tests and 186 assertions.
 
 ---
 
@@ -74,11 +78,14 @@ authentication header. It reads:
 
 ## The `apr:sync` command
 
+All commands run inside the `app` container, because the database host
+`mysql` is only reachable there.
+
 The command downloads the current complete APR snapshot. It takes no
 options.
 
 ```bash
-php artisan apr:sync
+docker compose exec app php artisan apr:sync
 ```
 
 The snapshot date is taken from the `DatumPreseka` field of the API
@@ -99,7 +106,7 @@ The command imports a local JSON snapshot into the `companies` table.
 Example for a small test:
 
 ```bash
-php artisan apr:import \
+docker compose exec app php -d memory_limit=512M artisan apr:import \
   --file=storage/app/apr/snapshots/20260930/companies.json \
   --limit=5 \
   --batch=500 \
@@ -109,7 +116,7 @@ php artisan apr:import \
 Example for a full sync:
 
 ```bash
-php artisan apr:import \
+docker compose exec app php -d memory_limit=512M artisan apr:import \
   --file=storage/app/apr/snapshots/20260930/companies.json \
   --limit=134374 \
   --batch=500 \
@@ -118,6 +125,14 @@ php artisan apr:import \
 
 Without `--write`, the command runs in dry-run mode and does not write any
 data to the database.
+
+`apr:import` decodes the whole JSON snapshot at once, which peaks at
+about 200 MB, even with a small `--limit`. Running it with
+`-d memory_limit=512M` is recommended. Streaming the JSON is planned
+(see ROADMAP.md, portfolio plan step 3).
+
+With `--write`, the command asks for confirmation before writing. With
+`--no-interaction`, the answer defaults to "no" and nothing is written.
 
 ---
 
@@ -142,7 +157,7 @@ Rules:
 After a full import, check:
 
 ```bash
-php artisan tinker --execute="dump(App\Models\Company::count()); dump(App\Models\Company::where('source_snapshot_date', '2026-09-30')->count());"
+docker compose exec app php artisan tinker --execute="dump(App\Models\Company::count()); dump(App\Models\Company::where('source_snapshot_date', '2026-09-30')->count());"
 ```
 
 Expected result for the snapshot `2026-09-30`:
@@ -158,7 +173,7 @@ Before running it, replace `ENTER_REGISTRATION_NUMBER` with a valid
 registration number of the company you want to check.
 
 ```bash
-php artisan tinker --execute="dump(App\Models\Company::where('registration_number', 'ENTER_REGISTRATION_NUMBER')->first(['registration_number','business_name','source_snapshot_date','imported_at','updated_at'])?->toArray());"
+docker compose exec app php artisan tinker --execute="dump(App\Models\Company::where('registration_number', 'ENTER_REGISTRATION_NUMBER')->first(['registration_number','business_name','source_snapshot_date','imported_at','updated_at'])?->toArray());"
 ```
 
 ---
@@ -178,6 +193,8 @@ php artisan tinker --execute="dump(App\Models\Company::where('registration_numbe
 
 ## Limitations
 
+- The importer loads the whole JSON snapshot into memory.
+- `apr:sync` has not yet been run inside the Docker container.
 - The sync currently runs as a manual Artisan command.
 - There is no scheduled automatic refresh.
 - There is no incremental sync based on changes; the complete snapshot is

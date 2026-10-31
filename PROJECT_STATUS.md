@@ -2,7 +2,7 @@
 
 ## Last updated
 
-2026-10-14
+2026-10-31
 
 ## Project purpose
 
@@ -16,10 +16,11 @@ development, redesign, and improvement services.
 ## Technology
 
 - Laravel
-- PHP 8.3 or newer (developed on 8.5)
-- SQLite
+- PHP 8.3 or newer (8.5 in the Docker image)
+- MySQL 8.4, collation `utf8mb4_0900_ai_ci`
 - Blade
-- Local development: `php artisan serve`
+- Local development: Docker Compose (`app`, `nginx`, `mysql`, `redis`);
+  the application runs at `http://localhost:8080`
 
 ## Data and architecture
 
@@ -118,6 +119,25 @@ The supported record statuses are:
 APR data is never changed by enrichment data.
 
 ## Currently completed
+
+### Development environment and database
+
+- Docker Compose with PHP 8.5-FPM, Nginx, MySQL 8.4, and Redis. Ports are
+  bound to `127.0.0.1` only.
+- The application moved from SQLite to MySQL. All tables use the
+  `utf8mb4_0900_ai_ci` collation, chosen after comparing collations on
+  the imported data (see DECISIONS.md).
+- Lowercase Cyrillic search now works (`београд` finds the same 3,608
+  companies as `БЕОГРАД`; under SQLite it found none).
+- The APR catalog was imported again into MySQL: 134,374 companies from
+  snapshot `2026-09-30`.
+- The test suite runs on a separate MySQL database,
+  `firma_finder_testing`. `TestDatabaseGuard` stops the run if any other
+  database is configured.
+- URL and page title columns were widened to match the validation
+  limits. A CRM lead or a manual audit with a URL longer than 255
+  characters previously failed with an HTTP 500 error.
+- 72 tests with 186 assertions pass on MySQL.
 
 ### APR catalog
 
@@ -224,6 +244,7 @@ from `contacted` to `qualified`.
   check manually.
 - The technical check stores the HTTP status, final URL, HTTPS status,
   redirect flag, response time, page title, and meta description.
+- The page title is truncated to 500 characters.
 - Note: `redirect_count` is 1 whenever the final URL differs from the
   requested URL, so a difference such as a trailing slash also gives 1.
 - An audit gets the status `failed` only when the connection fails or an
@@ -309,39 +330,50 @@ There are also manual enrichment test records:
 
 ## Current focus
 
-The company enrichment foundation and the manual enrichment flow are
-complete.
+The project follows a portfolio plan (see DECISIONS.md, 2026-10-29):
 
-The next step is manual confirmation of website audit findings.
+1. Docker Compose environment and MySQL — **in progress: an English
+   README remains**
+2. Website checks as queued jobs (Redis and Horizon), with retries,
+   timeouts, and logging
+3. More tests
+4. GitHub Actions: tests, Pint, and Larastan on every push
+5. A Vue 3 + Inertia frontend
+6. Deployment to a small server with HTTPS
+7. Final README: architecture diagram and screenshots
 
 ## Next task
 
-Add a manual review of website audit findings. `company_website_audits`
-already has a `reviewed_at` column; the task is to add:
+Step 2: run website checks as queued jobs.
 
-- `review_status`;
-- `reviewed_by`;
-- manual actions for approving, rejecting, and flagging for review, which
-  also set the existing `reviewed_at`.
+## After the portfolio plan
 
-After that comes OSM enrichment for a single company.
+These tasks were the previous next steps. They remain planned, in this
+order:
 
-## Plan after the enrichment review
-
-1. Add OSM enrichment for a single company.
-2. Define company identity rules based on MB/PIB.
-3. Define identity match scoring.
-4. Add Wikidata enrichment as a supplementary source.
-5. Integrate CompanyWall only after written confirmation of the terms.
-6. Implement automatic URL verification only after identity is reliable.
-7. Add Lighthouse results and desktop/mobile screenshots.
-8. Add AI analysis based on technical evidence and screenshots.
-9. Add a draft offer with mandatory manual review and approval.
-10. Only after quality is confirmed, add queues, rate limiting, and batch
-    processing.
+1. Manual review of website audit findings. `company_website_audits`
+   already has a `reviewed_at` column; the task is to add
+   `review_status`, `reviewed_by`, and manual actions for approving,
+   rejecting, and flagging for review.
+2. Add OSM enrichment for a single company.
+3. Define company identity rules based on MB/PIB.
+4. Define identity match scoring.
+5. Add Wikidata enrichment as a supplementary source.
+6. Integrate CompanyWall only after written confirmation of the terms.
+7. Implement automatic URL verification only after identity is reliable.
+8. Add Lighthouse results and desktop/mobile screenshots.
+9. Add AI analysis based on technical evidence and screenshots.
+10. Add a draft offer with mandatory manual review and approval.
+11. Add rate limiting and batch processing.
 
 ## Current limitations
 
+- The full APR import loads the whole JSON snapshot into memory and needs
+  `php -d memory_limit=512M artisan apr:import ...` in the container.
+- Search does not match across scripts: `beograd` does not find
+  `БЕОГРАД`.
+- Serbian Latin is not sorted in true alphabetical order (Č and Ć sort
+  with C).
 - URL, phone, and email are entered manually.
 - Enrichment candidates are currently entered only manually.
 - Website audits are created manually through the form on the company

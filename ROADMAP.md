@@ -17,6 +17,77 @@ AI is not a replacement for checking. It is used to speed up assessment,
 prioritization, and draft preparation, while the user always confirms the
 final decision and any sending.
 
+The portfolio plan below takes priority over the order of the other
+sections (see DECISIONS.md, 2026-10-29). Queues for website checks come
+earlier than point 8 above; batch processing still waits.
+
+---
+
+## Portfolio plan
+
+### 1. Docker Compose environment and MySQL
+
+- [x] Docker Compose: PHP 8.5-FPM, Nginx, MySQL 8.4, Redis
+- [x] Ports bound to `127.0.0.1` only
+- [x] Move from SQLite to MySQL
+- [x] Collation `utf8mb4_0900_ai_ci`, chosen after measuring on real data
+- [x] Fix lowercase Cyrillic search (`београд` found nothing under SQLite)
+- [x] Re-import the APR catalog into MySQL (134,374 companies)
+- [x] Run the test suite on a separate MySQL test database
+- [x] `TestDatabaseGuard` against running tests on another database
+- [x] Widen URL and page title columns to match validation limits
+- [x] Update the documentation
+- [ ] English README
+
+### 2. Website checks as queued jobs
+
+- [ ] Redis queue connection
+- [ ] Laravel Horizon
+- [ ] Website check job with retries, timeout, and logging
+
+### 3. Tests
+
+- [ ] Tests for `apr:import` as it is now
+- [ ] Stream the APR JSON instead of loading it into memory
+- [ ] Run `apr:sync` inside the Docker container (it has not been run
+  there yet)
+- [ ] More tests where coverage is missing; Pest where it fits
+
+### 4. Continuous integration
+
+- [ ] GitHub Actions: tests on MySQL, Pint, Larastan on every push
+- [ ] Run Pint over the whole project in a separate commit
+
+### 5. Vue 3 + Inertia frontend
+
+Each screen is designed first and approved, then implemented screen by
+screen.
+
+- [ ] Fix the duplicated "Osnovana" column on `/companies`
+- [ ] Fix the duplicated pagination on `/companies`
+- [ ] Redesign the application in Vue 3 + Inertia + Tailwind, as a modern
+  CRM interface
+- [ ] Table with a sticky header
+- [ ] Filters as chips
+- [ ] Side panel with company details
+- [ ] Ctrl+K command search and keyboard shortcuts
+- [ ] Quick actions from the list
+- [ ] Loading, empty, error, and saved states
+- [ ] Responsive layout
+- [ ] Accessibility: keyboard navigation and contrast
+- [ ] Keep the dark theme
+- [ ] Evaluate shadcn-vue for components
+
+### 6. Deployment
+
+- [ ] Small server (Hetzner or AWS EC2) with HTTPS
+- [ ] Production Docker image
+
+### 7. Final README
+
+- [ ] Architecture diagram
+- [ ] Screenshots
+
 ---
 
 ## Completed
@@ -102,7 +173,7 @@ final decision and any sending.
 
 ---
 
-## Next: Enrichment review
+## After the portfolio plan: Enrichment review
 
 ### Manual audit review
 
@@ -117,7 +188,7 @@ final decision and any sending.
 
 ---
 
-## Next: Automated enrichment
+## Later: Automated enrichment
 
 ### Company identity
 
@@ -200,6 +271,10 @@ final decision and any sending.
   cascade deletion
 - [x] Tests for manual creation of a website audit through the UI
 - [x] Tests for the manual technical URL check
+- [x] Tests run on MySQL instead of in-memory SQLite
+- [x] Unit tests for `TestDatabaseGuard`
+- [x] Tests for values longer than 255 characters in URL and page title
+  columns
 
 ---
 
@@ -224,7 +299,7 @@ final decision and any sending.
 - [x] Response time
 - [x] Error reason when the check fails
 - [ ] Rate limiting and a limit on parallel checks
-- [ ] Audit queue/job infrastructure
+- [ ] Audit queue/job infrastructure (portfolio plan, step 2)
 
 ### Lighthouse and screenshots
 
@@ -281,4 +356,13 @@ final decision and any sending.
 - [ ] Daily/periodic re-audit
 - [ ] Batch processing of selected companies
 - [ ] Configurable scoring model
-- [ ] Deployment from the local environment
+- [ ] Deployment (portfolio plan, step 6)
+- [ ] Search across scripts: `beograd` should find `БЕОГРАД`
+  (`business_name` stays unchanged; a search-only helper column needs a
+  separate decision)
+- [ ] True Serbian Latin sorting with
+  `COLLATE utf8mb4_sr_latn_0900_ai_ci` in `ORDER BY` only
+- [ ] 18 company names begin with punctuation and always sort first;
+  solve in queries, `business_name` stays unchanged
+- [ ] Decide whether `company_website_audits.requested_url` should be
+  `NOT NULL`

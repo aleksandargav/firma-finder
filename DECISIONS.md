@@ -405,6 +405,178 @@ The audit belongs to the CRM lead and the existing website check flow.
 
 ---
 
+## 2026-10-29 — The application runs on MySQL 8.4 in Docker Compose
+
+### Decision
+
+The application no longer uses SQLite. Local development runs in Docker
+Compose with four services:
+
+- `app`: PHP 8.5-FPM;
+- `nginx`: serves the application on `127.0.0.1:8080`;
+- `mysql`: MySQL 8.4, data in the `mysql-data` volume;
+- `redis`: prepared for queues, not used by the application yet.
+
+### Reason
+
+The same environment runs on every machine and later on the server.
+SQLite does not enforce `VARCHAR` lengths and compares text differently,
+so it hid errors that MySQL reports. A test fixture with a 9-digit
+registration number and URLs longer than 255 characters were both
+accepted by SQLite and rejected by MySQL.
+
+### Consequences
+
+- Artisan commands and tests run inside the container:
+  `docker compose exec app php artisan ...`.
+- Ports are bound to `127.0.0.1` only. MySQL is reachable from the host
+  on port `3307`; Redis is not exposed.
+- The `app` container runs as the host user's UID/GID, so files created
+  in `storage/` stay editable on the host.
+- The full APR import needs more memory than the container default:
+  `php -d memory_limit=512M artisan apr:import ...`.
+- Column lengths were widened with a new migration where validation
+  allowed longer values than the schema.
+- `database/database.sqlite` is no longer used.
+
+---
+
+## 2026-10-29 — Text columns use the utf8mb4_0900_ai_ci collation
+
+### Decision
+
+All tables use the `utf8mb4_0900_ai_ci` collation, set through
+`DB_COLLATION`.
+
+### Reason
+
+Three collations were compared on the 134,374 imported companies:
+
+| Search term | `utf8mb4_unicode_ci` | `utf8mb4_0900_ai_ci` | `utf8mb4_sr_latn_0900_ai_ci` |
+|---|---:|---:|---:|
+| `čačak` | 1,435 | 1,435 | 1,435 |
+| `cacak` | 1,435 | 1,435 | 0 |
+| `kuca` | 207 | 207 | 2 |
+| `dorđevic` | 0 | 42 | 0 |
+| `београд` | 3,608 | 3,608 | 3,608 |
+
+- `sr_latn` treats č, ć, š, ž and đ as separate letters, so a search
+  typed without diacritics finds almost nothing.
+- `0900_ai_ci` matches `unicode_ci` and also treats đ as d.
+- All three sort Serbian Cyrillic in the correct alphabetical order.
+- Search is the main way companies are found in the CRM, and users
+  often type without diacritics.
+
+Under SQLite, a lowercase Cyrillic search (`београд`) returned 0 rows,
+because SQLite's `LIKE` is case-insensitive only for ASCII. All three
+MySQL collations fix this.
+
+### Consequences
+
+- Serbian Latin is not sorted in true alphabetical order: Čačak and
+  Ćuprija sort before Cvet. True Serbian order can be added later with
+  `COLLATE utf8mb4_sr_latn_0900_ai_ci` in `ORDER BY` only.
+- No collation matches across scripts: `beograd` does not find
+  `БЕОГРАД`.
+- The `0900` collations do not exist in MariaDB, so the application
+  requires MySQL 8.
+
+---
+
+## 2026-10-29 — Tests run on a separate MySQL test database
+
+### Decision
+
+The test suite runs against the `firma_finder_testing` database in the
+same MySQL container. `phpunit.xml` sets the connection with
+`force="true"`.
+
+`Tests\TestDatabaseGuard`, called from `TestCase::createApplication()`,
+stops the test run if the configured database is not
+`firma_finder_testing`.
+
+### Reason
+
+Tests should run on the same database engine as the application.
+`RefreshDatabase` drops every table, so a wrong connection would wipe
+the development database. The guard runs before `RefreshDatabase` and
+checks the configuration the application actually uses, so it also
+protects against environment variables or a cached configuration.
+
+### Consequences
+
+- Tests run inside the container:
+  `docker compose exec app php artisan test --compact`.
+- `php artisan config:cache` is not run locally.
+- The guard has its own unit tests, which use an in-memory configuration
+  and never connect to a database.
+- Parallel testing (`--parallel`) adds a suffix to the database name, so
+  the guard would need to change before it is used.
+
+---
+
+## 2026-10-29 — APR company names are never modified
+
+### Decision
+
+The `business_name` value from APR is stored exactly as received. It is
+never modified, cleaned, trimmed of punctuation, or normalized.
+
+A separate helper column used only for search is not ruled out. Whether
+to add one will be decided separately, when cross-script search is
+worked on.
+
+### Reason
+
+APR data is the official register snapshot. This extends the rule that
+APR data is never changed by CRM, enrichment, or audit data.
+
+18 company names begin with punctuation, and one with an invisible
+byte order mark (U+FEFF), so they sort first. This is how they are
+written in the register.
+
+### Consequences
+
+- Sorting problems, such as names that begin with punctuation, are
+  solved in queries, for example with `COLLATE`, not by changing the
+  name.
+- If a search-only helper column is added later, it will be recorded as
+  a separate decision. `business_name` stays unchanged either way.
+
+---
+
+## 2026-10-29 — The portfolio plan takes priority over the previous roadmap order
+
+### Decision
+
+Work now follows this order:
+
+1. Docker Compose environment and MySQL.
+2. Website checks as queued jobs (Redis and Horizon), with retries,
+   timeouts, and logging.
+3. More tests.
+4. GitHub Actions: tests, Pint, and Larastan on every push.
+5. A Vue 3 + Inertia frontend.
+6. Deployment to a small server with HTTPS.
+7. Final README: architecture diagram and screenshots.
+
+### Reason
+
+The project also serves as a public portfolio. These steps cover the
+skills expected from a Laravel developer and make the application easier
+to run and review.
+
+### Consequences
+
+- The previous next steps (manual audit review, OSM enrichment) move
+  after this plan.
+- Queues move earlier. The previous roadmap placed them after the
+  quality of the audits was confirmed.
+- The other existing decisions still apply, including manual approval
+  of everything AI produces.
+
+---
+
 ## Rule for future schema changes
 
 Once a Laravel migration has been run, the existing migration file is not
