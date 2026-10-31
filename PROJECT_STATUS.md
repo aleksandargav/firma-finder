@@ -332,8 +332,7 @@ There are also manual enrichment test records:
 
 The project follows a portfolio plan (see DECISIONS.md, 2026-10-29):
 
-1. Docker Compose environment and MySQL — **in progress: an English
-   README remains**
+1. Docker Compose environment and MySQL — **done**
 2. Website checks as queued jobs (Redis and Horizon), with retries,
    timeouts, and logging
 3. More tests

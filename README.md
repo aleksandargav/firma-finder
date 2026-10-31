@@ -1,328 +1,149 @@
 # Firma Finder
 
-Firma Finder is a local Laravel application for finding, reviewing, and
-qualifying companies from the Serbian Business Registers Agency (APR)
-register. It uses a local APR catalog to organize the sales process for
-website development, redesign, and improvement services. The user
-interface is written in Serbian, because the tool is built for the Serbian
-market. Documentation, code messages and this README are in English; button and label names quoted in the documentation are English translations of the Serbian interface text.
+Firma Finder is a Laravel application for finding and qualifying Serbian
+companies as sales leads for website development and redesign services.
+It imports the open company register of the Serbian Business Registers
+Agency (APR), adds a lightweight CRM on top of it, and runs technical
+checks of company websites.
 
-## Technology
+The user interface is in Serbian, because the tool is built for the
+Serbian market. Code, documentation, and this README are in English.
 
-- Laravel
-- PHP 8.3 or newer (developed on 8.5)
-- Local SQLite database
+## Features
+
+- **APR catalog**: 134,374 companies imported from the APR Open Data API,
+  with search by name or registration number and filters by
+  municipality, activity code, and status. Search is case-insensitive in
+  both Latin and Cyrillic and ignores diacritics (`cacak` finds `Čačak`),
+  but it does not match across scripts: `beograd` does not find
+  `БЕОГРАД`.
+- **CRM**: one lead per company with website, contact details, lead
+  status, and score; a lead list with filters and sorting. The first
+  contact date and the last website check date are set automatically.
+- **Website checks**: an HTTP check of a company's website that records
+  the status code, final URL after redirects, HTTPS, response time, page
+  title, and meta description. Every check is kept as history.
+- **Data enrichment**: website, email, phone, and address candidates with
+  source, confidence, and license status. Candidates are verified
+  manually; a verified website can be applied to the CRM only by an
+  explicit user action.
+
+There is no authentication. The application is meant to run locally.
+
+## Tech stack
+
+- PHP 8.5, Laravel 13
+- MySQL 8.4
 - Blade views
-- Local development via `php artisan serve`
+- Docker Compose: PHP-FPM, Nginx, MySQL, Redis
+- PHPUnit, running against MySQL
 
-## Getting started
+## Running locally
 
-### Requirements
-
-- PHP `^8.3`, as required by `composer.json`. The project itself is
-  developed and documented with PHP 8.5 (`php8.5`); replace `php` with
-  `php8.5` in the commands below if that is how PHP is installed on your
-  machine.
-- Composer.
-- SQLite (`DB_CONNECTION=sqlite` in `.env.example`).
-- Node.js and npm, for the Vite and Tailwind CSS frontend build defined in
-  `package.json`. No Node.js version is pinned in the repository.
-
-### Installation
+Requirements: Docker with the Compose plugin.
 
 ```bash
-composer install
+git clone https://github.com/aleksandargav/firma-finder.git
+cd firma-finder
 cp .env.example .env
-php artisan key:generate
-touch database/database.sqlite
-php artisan migrate
+docker compose up -d --build
+docker compose exec app composer install
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate
 ```
 
-`.env.example` sets `DB_CONNECTION=sqlite` without a `DB_DATABASE` path, so
-the default SQLite file `database/database.sqlite` is used.
+The application is now available at http://localhost:8080. The company
+list stays empty until the APR data is imported.
 
-To build the frontend assets (this is also part of the `composer setup`
-script in `composer.json`):
+The `app` container runs as user and group ID 1000. If your IDs differ
+(`id -u`, `id -g`), add `UID` and `GID` with your values to `.env` before
+building, so that files created in `storage/` stay editable.
+
+### Importing the APR catalog
+
+The import has two steps: download a snapshot, then write it to the
+database.
+
+`apr:sync` needs a CA certificate bundle. The APR API server sends only
+its own certificate and leaves out the intermediate certificate (SSL2BUY
+EMEA RSA Domain Validation Secure Server CA), so a standard TLS client
+cannot verify the connection. The bundle contains that intermediate and
+its root, Sectigo Public Server Authentication Root R46. Build it once:
 
 ```bash
-npm install
-npm run build
+mkdir -p storage/app/apr/ca
+curl -sS http://crt.sectigo.com/SSL2BUYEMEARSADomainValidationSecureServerCA.crt \
+  | openssl x509 -inform DER -out storage/app/apr/ca/apr-ca.pem
+cat /etc/ssl/certs/Sectigo_Public_Server_Authentication_Root_R46.pem \
+  >> storage/app/apr/ca/apr-ca.pem
 ```
 
-### Loading the APR company catalog
+The download URL of the intermediate is listed in the APR server
+certificate itself. The root certificate path above is the one on Debian
+and Ubuntu; on other systems, take the same root from the system trust
+store. To use a different location, set `APR_CA_BUNDLE`.
 
-The database is not included in the repository: `database/.gitignore`
-excludes all `*.sqlite*` files. Downloaded APR snapshots are not included
-either, because `storage/app` is git-ignored. After `php artisan migrate`,
-the `companies` table is empty until you import the APR data yourself.
-
-The data comes from the APR Open Data API. `config/apr.php` reads two
-environment variables, neither of which is in `.env.example`:
-
-- `APR_API_URL` — the API endpoint. Default:
-  `https://openapi.apr.gov.rs/api/opendata/companies`.
-- `APR_CA_BUNDLE` — the CA certificate bundle used to verify the APR TLS
-  connection. Default: `storage/app/apr/ca/apr-ca.pem`. Because
-  `storage/app` is git-ignored, this file is not in the repository and
-  you have to provide it yourself.
-
-`App\Services\AprApiService` sends a plain GET request to `APR_API_URL`
-with no token or authentication header, so no API token is needed. If the
-CA bundle file does not exist or is not readable, the service throws an
-exception (`APR CA bundle not found: <path>`) before making any
-request, and `apr:sync` fails.
-
-Loading the catalog takes two steps.
-
-**1. Download a snapshot: `apr:sync`**
+Then download and import the data:
 
 ```bash
-php artisan apr:sync
-```
-
-This command takes no options. It downloads the current APR Open Data
-snapshot, saves it locally, and prints the snapshot date, the number of
-companies, and the path of the saved file. `APR_DATA_SYNC.md` gives the
-location as `storage/app/apr/snapshots/{YYYYMMDD}/companies.json`.
-
-Note: `APR_DATA_SYNC.md` shows a `--date` option for `apr:sync`, but the
-command does not define one.
-
-**2. Import the snapshot: `apr:import`**
-
-```bash
-php artisan apr:import \
+docker compose exec app php artisan apr:sync
+docker compose exec app php -d memory_limit=512M artisan apr:import \
   --file=storage/app/apr/snapshots/YYYYMMDD/companies.json \
   --limit=134374 \
-  --batch=500 \
   --write
 ```
 
-Options:
+- `apr:sync` prints the path of the saved snapshot; use it for `--file`.
+- `apr:import` reads the whole JSON file into memory (about 200 MB),
+  hence `-d memory_limit=512M`. It asks for confirmation before writing.
 
-| Option | Default | Meaning |
-|---|---|---|
-| `--file` | `storage/app/apr-response.json` | Path to the APR JSON snapshot, absolute or relative to the project root. The default is not where `apr:sync` saves snapshots, so pass the path that `apr:sync` printed. |
-| `--limit` | `5` | Maximum number of records to process. Must be between 1 and 134374. |
-| `--batch` | `500` | Number of records per SQL upsert batch. Must be between 1 and 1000. |
-| `--write` | off | Write to the database. Without it, the command only does a dry run and shows a preview of up to 5 records. |
+`apr:import` has been run inside Docker; `apr:sync` has so far only been
+run outside the container. Details: [APR_DATA_SYNC.md](APR_DATA_SYNC.md).
 
-With `--write`, the command asks for confirmation before it writes
-anything. Records are upserted by registration number, so running the
-import again updates existing companies instead of creating duplicates.
-Run it without `--write` first to check the file.
-
-### Running the app
+## Running the tests
 
 ```bash
-php artisan serve
+docker compose exec app php artisan test --compact
 ```
 
-The app is then available at `http://localhost:8000` (`APP_URL` in
-`.env.example`). `composer.json` also defines a `composer dev` script,
-which runs `php artisan dev`.
+The tests run against `firma_finder_testing`, a separate MySQL database
+that the container creates on first start. Because `RefreshDatabase`
+drops every table, `tests/TestDatabaseGuard.php` stops the test run
+before any migration if the configured database is anything else. The
+guard has its own unit tests.
 
-### Running the tests
+## Key decisions
 
-```bash
-php artisan test
-```
+- **APR data is never changed.** CRM, enrichment, and audit data live in
+  separate tables, and company names are stored exactly as in the
+  register.
+- **MySQL instead of SQLite.** SQLite accepted values that MySQL rejects,
+  such as URLs longer than the column; tests now run on MySQL to catch
+  this.
+- **Collation chosen by measurement.** `utf8mb4_0900_ai_ci` was compared
+  with `utf8mb4_unicode_ci` and the Serbian Latin collation on the real
+  data; it finds the most results for searches typed without diacritics.
+- **Manual confirmation.** Enrichment candidates and future AI findings
+  never change the CRM without an explicit user action.
 
-You can also run `composer test`, which clears the configuration cache
-first and then runs `php artisan test`.
+All decisions with their reasons: [DECISIONS.md](DECISIONS.md).
 
-## Core architecture
+## Project status
 
-### APR data
+Done: the APR catalog, the CRM, manual website checks, manual
+enrichment, and a Docker and MySQL environment.
 
-The `companies` table stores imported, source APR data:
+Next: running website checks as queued jobs (Redis and Horizon), CI with
+GitHub Actions, a Vue 3 + Inertia frontend, and deployment.
 
-- registration number;
-- company name;
-- municipality;
-- status;
-- legal form;
-- business activity;
-- date of incorporation;
-- APR snapshot date.
+Plan and progress: [ROADMAP.md](ROADMAP.md) ·
+Current state: [PROJECT_STATUS.md](PROJECT_STATUS.md)
 
-APR data is the source catalog and must not be overwritten by CRM or audit
-data.
+## More documentation
 
-### CRM data
-
-The `company_leads` table stores manually entered CRM data:
-
-- website URL;
-- website status;
-- phone;
-- email;
-- lead status;
-- lead score;
-- notes;
-- website check date;
-- first contact date.
-
-The relationship between `Company` and `CompanyLead` is strictly 1:1 and is
-enforced by a unique index on `company_id`.
-
-### Website audit
-
-The `company_website_audits` table stores the history of technical and
-manual website checks.
-
-A single CRM lead can have multiple website audit records. An audit can be:
-
-- `pending`;
-- `completed`;
-- `failed`.
-
-### Company enrichment
-
-The `company_data_points` table stores candidate and verified company data:
-
-- website;
-- email;
-- phone;
-- address.
-
-Enrichment data is kept separate from both APR data and CRM data. No
-enrichment record automatically changes the APR catalog or a CRM lead.
-
-## Currently completed
-
-### APR catalog
-
-- Local APR company catalog.
-- Import of 125,054 companies.
-- Search by company name and registration number.
-- Filter by municipality.
-- Filter by activity code.
-- Filter by APR status.
-- Pagination.
-- Company detail page.
-
-### CRM
-
-- Manual creation and updating of CRM leads.
-- Website URL, phone, email, and notes.
-- Website status.
-- Lead status.
-- Lead score.
-- Automatic first contact date.
-- CRM list at `/leads`.
-- Filtering and sorting of the CRM list.
-- CRM status in the company catalog.
-- Website URL validation and normalization.
-- Automatic last website check date.
-
-### Website audit
-
-- `company_website_audits` table.
-- `CompanyWebsiteAudit` model.
-- `CompanyLead hasMany CompanyWebsiteAudit` relationship.
-- `CompanyWebsiteAudit belongsTo CompanyLead` relationship.
-- Support for multiple audits per lead.
-- Cascade deletion of audits when a lead is deleted.
-- Audit statuses: `pending`, `completed`, and `failed`.
-- Audit history on the company detail page.
-- Manual form for creating a website audit.
-- Manual technical URL check.
-- Checks for HTTP status, HTTPS, redirects, response time, page title, and
-  meta description.
-- Feature tests for the model, relationships, validation, UI, and technical
-  check.
-
-### Company enrichment
-
-- `company_data_points` table.
-- `CompanyDataPoint` model.
-- `Company hasMany CompanyDataPoint` relationship.
-- Cascade deletion of enrichment records when a company is deleted.
-- Support for website, email, phone, and address.
-- Constants for sources, confidence, license status, and record status.
-- Validation rules for enrichment data.
-- Manual addition of enrichment candidates through the UI.
-- Manual verification, rejection, and flagging for review.
-- Explicit application of a verified website URL to the CRM.
-- Running a website audit from a verified website candidate.
-- Feature tests for the model, relationships, validation, UI, and audit
-  flow.
-
-## Company enrichment principle
-
-The enrichment layer is used to collect and manually verify additional
-company data.
-
-Each record in `company_data_points` has:
-
-- data type;
-- value;
-- source;
-- confidence;
-- license status;
-- record status;
-- optional note;
-- optional source reference.
-
-The record statuses are:
-
-- `candidate` — candidate for review;
-- `verified` — manually verified;
-- `rejected` — manually rejected;
-- `needs_review` — requires further checking.
-
-For now, enrichment data is added manually. Automated sources, such as
-OpenStreetMap, Wikidata, or CompanyWall, will come only after the manual
-review layer and clear verification rules are in place.
-
-## Applying a verified website candidate
-
-A verified website candidate from the enrichment layer can be applied to
-the CRM only through an explicit user action.
-
-When the user applies the candidate to the CRM:
-
-- if no lead exists, a new lead is created;
-- if a lead exists, only `website_url`, `website_status`,
-  and `website_checked_at` are updated;
-- `lead_status`, `lead_score`, phone, email, and notes are not changed;
-- APR data is not changed;
-- the enrichment record remains `verified`.
-
-## Running an audit from an enrichment candidate
-
-For a verified website candidate belonging to a company that already has a
-CRM lead, a website audit can be run.
-
-The audit is created in the existing `company_website_audits` table, and
-`requested_url` is taken from the verified enrichment candidate.
-
-An audit can be run only if:
-
-- the data point is of type `website`;
-- the data point has the status `verified`;
-- the company has a CRM lead.
-
-Running an audit does not change the enrichment record or the CRM data.
-
-## Development principles
-
-- APR data remains the source catalog.
-- CRM data is the manual sales layer.
-- Enrichment data is a separate layer of candidates and verifications.
-- Website audit is a separate layer of technical and visual checks.
-- No automated process changes APR data.
-- The CRM is changed only through explicit user actions.
-- AI analysis comes only after objective technical and visual checks.
-- The final decision is always confirmed by the user.
-
-## Documentation
-
-- `APR_DATA_SYNC.md` — APR data import and synchronization rules.
-- `crm.md` — CRM model, statuses, and rules.
-- `website-audits.md` — website audit model and flow.
-- `company-enrichment.md` — enrichment model, statuses, and rules.
-- `PROJECT_STATUS.md` — current project status.
-- `ROADMAP.md` — further development plan.
-- `DECISIONS.md` — architectural and product decisions.
+- [APR_DATA_SYNC.md](APR_DATA_SYNC.md): APR download and import
+- [docs/crm.md](docs/crm.md): CRM model and statuses
+- [docs/website-audits.md](docs/website-audits.md): website audit model
+  and flow
+- [docs/company-enrichment.md](docs/company-enrichment.md): enrichment
+  model and rules

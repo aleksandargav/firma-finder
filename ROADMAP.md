@@ -37,7 +37,7 @@ earlier than point 8 above; batch processing still waits.
 - [x] `TestDatabaseGuard` against running tests on another database
 - [x] Widen URL and page title columns to match validation limits
 - [x] Update the documentation
-- [ ] English README
+- [x] English README
 
 ### 2. Website checks as queued jobs
 
@@ -82,6 +82,8 @@ screen.
 
 - [ ] Small server (Hetzner or AWS EC2) with HTTPS
 - [ ] Production Docker image
+- [ ] Pin the PHP base image to an exact version, so builds are
+  reproducible
 
 ### 7. Final README
 
