@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\RunWebsiteAuditJob;
 use App\Models\CompanyDataPoint;
-use App\Services\WebsiteAuditService;
 use App\Models\Company;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -241,15 +241,13 @@ class CompanyController extends Controller
             ->with('success', 'The website audit was added successfully.');
     }
 
-    public function runWebsiteAudit(
-        CompanyWebsiteAudit $audit,
-        WebsiteAuditService $auditService
-    ): RedirectResponse {
-        $auditService->check($audit);
+    public function runWebsiteAudit(CompanyWebsiteAudit $audit): RedirectResponse
+    {
+        RunWebsiteAuditJob::dispatch($audit);
 
         return redirect()
             ->route('companies.show', $audit->companyLead->company)
-            ->with('success', 'The technical website check is complete.');
+            ->with('success', 'The technical website check has been queued. Refresh the page in a few seconds to see the result.');
     }
 
     public function applyWebsiteDataPointToLead(

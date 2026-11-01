@@ -2,13 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\RunWebsiteAuditJob;
 use App\Models\Company;
 use App\Models\CompanyLead;
 use App\Models\CompanyWebsiteAudit;
 use App\Services\WebsiteAuditService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class WebsiteAuditTechnicalCheckTest extends TestCase
@@ -73,29 +76,27 @@ class WebsiteAuditTechnicalCheckTest extends TestCase
         });
     }
 
-    public function test_it_fails_when_site_is_unreachable(): void
+    public function test_connection_failure_is_rethrown_and_leaves_the_audit_pending(): void
     {
+        Http::preventStrayRequests();
         Http::fake([
-            'https://example.com' => function () {
-                throw new \Illuminate\Http\Client\ConnectionException(
-                    'Connection timed out'
-                );
-            },
+            'https://example.com' => Http::failedConnection('Connection timed out'),
         ]);
 
         $audit = $this->createAudit();
 
-        $service = app(WebsiteAuditService::class);
-        $audit = $service->check($audit);
+        try {
+            app(WebsiteAuditService::class)->check($audit);
+            $this->fail('A connection failure should be rethrown so the queue can retry the check.');
+        } catch (ConnectionException $exception) {
+            $this->assertStringContainsString('Connection timed out', $exception->getMessage());
+        }
 
-        $this->assertSame(CompanyWebsiteAudit::STATUS_FAILED, $audit->status);
-        $this->assertFalse($audit->is_reachable);
-        $this->assertNotNull($audit->error_message);
-        $this->assertStringContainsString(
-            'Connection timed out',
-            $audit->error_message
-        );
-        $this->assertNotNull($audit->completed_at);
+        $audit->refresh();
+
+        $this->assertSame(CompanyWebsiteAudit::STATUS_PENDING, $audit->status);
+        $this->assertNull($audit->completed_at);
+        $this->assertNull($audit->error_message);
     }
 
     public function test_it_fails_when_requested_url_is_missing(): void
@@ -117,14 +118,9 @@ class WebsiteAuditTechnicalCheckTest extends TestCase
         );
     }
 
-    public function test_ui_can_run_a_technical_check(): void
+    public function test_ui_queues_a_technical_check(): void
     {
-        Http::fake([
-            'https://example.com' => Http::response(
-                '<html><head><title>Example</title></head><body>OK</body></html>',
-                200
-            ),
-        ]);
+        Queue::fake([RunWebsiteAuditJob::class]);
 
         $audit = $this->createAudit();
 
@@ -133,17 +129,29 @@ class WebsiteAuditTechnicalCheckTest extends TestCase
         $response->assertRedirect(
             route('companies.show', $audit->companyLead->company)
         );
-
         $response->assertSessionHas(
             'success',
-            'The technical website check is complete.'
+            'The technical website check has been queued. Refresh the page in a few seconds to see the result.'
         );
 
-        $audit->refresh();
+        $this->assertSame(CompanyWebsiteAudit::STATUS_PENDING, $audit->refresh()->status);
 
-        $this->assertSame(CompanyWebsiteAudit::STATUS_COMPLETED, $audit->status);
-        $this->assertSame(200, $audit->http_status);
-        $this->assertTrue($audit->is_reachable);
+        Queue::assertPushed(
+            RunWebsiteAuditJob::class,
+            fn (RunWebsiteAuditJob $job): bool => $job->audit->is($audit)
+        );
+    }
+
+    public function test_ui_queues_the_same_audit_only_once(): void
+    {
+        Queue::fake([RunWebsiteAuditJob::class]);
+
+        $audit = $this->createAudit();
+
+        $this->post(route('website-audits.run', $audit));
+        $this->post(route('website-audits.run', $audit));
+
+        Queue::assertPushedTimes(RunWebsiteAuditJob::class, 1);
     }
 
     public function test_it_truncates_a_page_title_longer_than_500_characters(): void

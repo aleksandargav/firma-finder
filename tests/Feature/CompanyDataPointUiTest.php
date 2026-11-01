@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\RunWebsiteAuditJob;
 use App\Models\Company;
 use App\Models\CompanyDataPoint;
 use App\Models\CompanyLead;
 use App\Models\CompanyWebsiteAudit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class CompanyDataPointUiTest extends TestCase
@@ -385,14 +387,9 @@ class CompanyDataPointUiTest extends TestCase
         ]);
     }
 
-    public function test_user_can_run_website_audit_for_verified_website_data_point(): void
+    public function test_user_can_queue_website_audit_for_verified_website_data_point(): void
     {
-        Http::fake([
-            'https://example.com/*' => Http::response(
-                '<html><head><title>Example</title></head><body>Example</body></html>',
-                200
-            ),
-        ]);
+        Queue::fake([RunWebsiteAuditJob::class]);
 
         $company = $this->createCompany('12345692');
 
@@ -412,16 +409,22 @@ class CompanyDataPointUiTest extends TestCase
 
         $response = $this->post("/data-points/{$dataPoint->id}/run-audit");
 
-        $response->assertRedirect();
+        $response->assertRedirect(route('companies.show', $company));
+        $response->assertSessionHas(
+            'success',
+            'The website audit has been queued. Refresh the page in a few seconds to see the result.'
+        );
 
-        $this->assertDatabaseHas('company_website_audits', [
-            'company_lead_id' => $company->lead->id,
-            'requested_url' => 'https://example.com',
-            'status' => CompanyWebsiteAudit::STATUS_COMPLETED,
-            'http_status' => 200,
-            'is_reachable' => true,
-            'has_https' => true,
-        ]);
+        $audit = CompanyWebsiteAudit::sole();
+
+        $this->assertSame($company->lead->id, $audit->company_lead_id);
+        $this->assertSame('https://example.com', $audit->requested_url);
+        $this->assertSame(CompanyWebsiteAudit::STATUS_PENDING, $audit->status);
+
+        Queue::assertPushed(
+            RunWebsiteAuditJob::class,
+            fn (RunWebsiteAuditJob $job): bool => $job->audit->is($audit)
+        );
     }
 
     public function test_user_cannot_run_audit_for_unverified_website_data_point(): void

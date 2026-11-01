@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\RunWebsiteAuditJob;
 use App\Models\Company;
 use App\Models\CompanyDataPoint;
 use App\Models\CompanyWebsiteAudit;
-use App\Services\WebsiteAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -108,10 +108,8 @@ class CompanyDataPointController extends Controller
             ->with('success', 'The enrichment candidate was flagged for review.');
     }
 
-    public function runAudit(
-        CompanyDataPoint $dataPoint,
-        WebsiteAuditService $auditService
-    ): RedirectResponse {
+    public function runAudit(CompanyDataPoint $dataPoint): RedirectResponse
+    {
         $company = $dataPoint->company;
 
         if (! $company) {
@@ -145,11 +143,11 @@ class CompanyDataPointController extends Controller
             'status' => CompanyWebsiteAudit::STATUS_PENDING,
         ]);
 
-        $auditService->check($audit);
+        RunWebsiteAuditJob::dispatch($audit);
 
         return redirect()
             ->route('companies.show', $company)
-            ->with('success', 'The website audit was run and completed.');
+            ->with('success', 'The website audit has been queued. Refresh the page in a few seconds to see the result.');
     }
 
     private function normalizeValue(string $field, string $value): ?string

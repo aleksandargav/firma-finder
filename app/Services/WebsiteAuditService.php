@@ -11,6 +11,9 @@ class WebsiteAuditService
 {
     private const PAGE_TITLE_MAX_LENGTH = 500;
 
+    /**
+     * @throws ConnectionException When the site cannot be reached, so the queue can retry the check.
+     */
     public function check(CompanyWebsiteAudit $audit): CompanyWebsiteAudit
     {
         $audit->update([
@@ -23,13 +26,14 @@ class WebsiteAuditService
         $requestedUrl = $audit->requested_url;
 
         if (! $requestedUrl) {
-            return $this->fail($audit, 'The URL to check is not defined.');
+            return $this->markAsFailed($audit, 'The URL to check is not defined.');
         }
 
         $startedAt = microtime(true);
 
         try {
-            $response = Http::timeout(15)
+            $response = Http::connectTimeout(5)
+                ->timeout(15)
                 ->withHeaders([
                     'User-Agent' => 'FirmaFinderAudit/1.0',
                 ])
@@ -54,20 +58,19 @@ class WebsiteAuditService
 
             return $audit->refresh();
         } catch (ConnectionException $exception) {
-            return $this->fail(
-                $audit,
-
-                'The website could not be reached: ' . $exception->getMessage()
-            );
+            throw $exception;
         } catch (\Throwable $exception) {
-            return $this->fail(
+            return $this->markAsFailed(
                 $audit,
                 'Error during the technical check: ' . $exception->getMessage()
             );
         }
     }
 
-    private function fail(CompanyWebsiteAudit $audit, string $message): CompanyWebsiteAudit
+    /**
+     * Stores a failed result with the reason shown in the audit history.
+     */
+    public function markAsFailed(CompanyWebsiteAudit $audit, string $message): CompanyWebsiteAudit
     {
         $audit->update([
             'status' => CompanyWebsiteAudit::STATUS_FAILED,
