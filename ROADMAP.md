@@ -80,6 +80,11 @@ screen.
 
 ### 6. Deployment
 
+- [ ] Required before deployment: SSRF protection for website checks,
+  rejecting private and internal addresses (the queue worker can reach
+  `mysql` and `redis` on the Docker network)
+- [ ] Set a Redis password (`REDIS_PASSWORD` is `null` locally, where
+  Redis is not exposed outside the Docker network)
 - [ ] Small server (Hetzner or AWS EC2) with HTTPS
 - [ ] Production Docker image
 - [ ] Pin the PHP base image to an exact version, so builds are
